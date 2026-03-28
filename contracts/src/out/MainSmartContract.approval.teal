@@ -1,0 +1,165 @@
+#pragma version 11
+#pragma typetrack false
+
+// @algorandfoundation/algorand-typescript/arc4/index.d.ts::Contract.approvalProgram() -> uint64:
+main:
+    intcblock 1 0
+    // contracts/src/MainSmartContract.algo.ts:27
+    // export class MainSmartContract extends Contract {
+    txn OnCompletion
+    !
+    assert // OnCompletion must be NoOp
+    txn ApplicationID
+    bz main_create_NoOp@5
+    pushbytes 0xbc2af845 // method "register(pay,address)void"
+    txna ApplicationArgs 0
+    match register
+    err
+
+main_create_NoOp@5:
+    // contracts/src/MainSmartContract.algo.ts:27
+    // export class MainSmartContract extends Contract {
+    pushbytes 0xb8447b36 // method "createApplication()void"
+    txna ApplicationArgs 0
+    match createApplication
+    err
+
+
+// contracts/src/MainSmartContract.algo.ts::MainSmartContract.createApplication[routing]() -> void:
+createApplication:
+    // contracts/src/MainSmartContract.algo.ts:30
+    // maintainerAddress = GlobalState<Account>();
+    pushbytes "maintainerAddress"
+    // contracts/src/MainSmartContract.algo.ts:44
+    // this.maintainerAddress.value = Txn.sender;
+    txn Sender
+    app_global_put
+    // contracts/src/MainSmartContract.algo.ts:33
+    // users_number = GlobalState<uint64>();
+    pushbytes "users_number"
+    // contracts/src/MainSmartContract.algo.ts:45
+    // this.users_number.value = 0;
+    intc_1 // 0
+    app_global_put
+    // contracts/src/MainSmartContract.algo.ts:41
+    // @abimethod()
+    intc_0 // 1
+    return
+
+
+// contracts/src/MainSmartContract.algo.ts::MainSmartContract.register[routing]() -> void:
+register:
+    // contracts/src/MainSmartContract.algo.ts:49
+    // register(payTxn : gtxn.PaymentTxn, userAddress : Account){
+    txn GroupIndex
+    intc_0 // 1
+    -
+    dup
+    gtxns TypeEnum
+    intc_0 // pay
+    ==
+    assert // transaction type is pay
+    txna ApplicationArgs 1
+    dup
+    len
+    pushint 32 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    // contracts/src/MainSmartContract.algo.ts:51
+    // assert(payTxn.receiver === Global.currentApplicationAddress, 'Payment must be to the contract')
+    dig 1
+    gtxns Receiver
+    global CurrentApplicationAddress
+    ==
+    assert // Payment must be to the contract
+    // contracts/src/MainSmartContract.algo.ts:52
+    // assert(payTxn.amount === Uint64(5000), 'Incorrect payment amount')
+    swap
+    gtxns Amount
+    pushint 5000 // 5000
+    ==
+    assert // Incorrect payment amount
+    // contracts/src/MainSmartContract.algo.ts:59-69
+    // const helloApp = itxn
+    //   .applicationCall({
+    //     appArgs: [methodSelector(UserAccountContract.prototype.createApplication),new arc4.Uint64(1) ],
+    //     approvalProgram: compiled.approvalProgram,
+    //     clearStateProgram: compiled.clearStateProgram,
+    //     globalNumBytes: compiled.globalBytes,
+    //           accounts: [ userAddress ],
+    //            globalNumUint: 2, // <-- Allow 1 uint in global state,
+    // 
+    //   })
+    //   .submit().createdApp
+    itxn_begin
+    // contracts/src/MainSmartContract.algo.ts:66
+    // globalNumUint: 2, // <-- Allow 1 uint in global state,
+    pushint 2 // 2
+    itxn_field GlobalNumUint
+    itxn_field Accounts
+    // contracts/src/MainSmartContract.algo.ts:56
+    // const compiled = compile(UserAccountContract)
+    intc_0 // 1
+    itxn_field GlobalNumByteSlice
+    pushbytes base64(C4EBQw==)
+    itxn_field ClearStateProgramPages
+    pushbytes base64(CyAEAAEgAiYEBWxpbWl0CXBpZ2d5QmFuawxvd25lckFkZHJlc3MEFR98dTEZFEQxGEEAJIIEBBWsk/MEVDBh0QS0ZZAGBEXUFEA2GgCOBAAgAJIArgC5AIAE0yS+pDYaAI4BAAEANhoBSRUkEkQqTGcogQpnI0M2GgFJIlklCEsBFUlPAhJENhoCSSJZJQhLARUSRDYaA0kVJBJEMQCAIFkMRo2QglNpQqeJVb8R/zTZtk0bqPZm67hik+YQMd9TEkSBBU8DCBZXBgKAAwAFgExQTwNQTwJQSwG8SL8iKGVEgTIIKExnI0M2GgFJFYEIEkQXMQAiKmVEEkQiKWVECClMZyNDIillRBYrTFCwI0MiKGVEFitMULAjQw==)
+    itxn_field ApprovalProgramPages
+    // contracts/src/MainSmartContract.algo.ts:61
+    // appArgs: [methodSelector(UserAccountContract.prototype.createApplication),new arc4.Uint64(1) ],
+    pushbytes 0xd324bea4 // method "createApplication(address)void"
+    itxn_field ApplicationArgs
+    pushbytes 0x0000000000000001
+    itxn_field ApplicationArgs
+    // contracts/src/MainSmartContract.algo.ts:59-68
+    // const helloApp = itxn
+    //   .applicationCall({
+    //     appArgs: [methodSelector(UserAccountContract.prototype.createApplication),new arc4.Uint64(1) ],
+    //     approvalProgram: compiled.approvalProgram,
+    //     clearStateProgram: compiled.clearStateProgram,
+    //     globalNumBytes: compiled.globalBytes,
+    //           accounts: [ userAddress ],
+    //            globalNumUint: 2, // <-- Allow 1 uint in global state,
+    // 
+    //   })
+    pushint 6 // 6
+    itxn_field TypeEnum
+    intc_1 // 0
+    itxn_field Fee
+    // contracts/src/MainSmartContract.algo.ts:59-69
+    // const helloApp = itxn
+    //   .applicationCall({
+    //     appArgs: [methodSelector(UserAccountContract.prototype.createApplication),new arc4.Uint64(1) ],
+    //     approvalProgram: compiled.approvalProgram,
+    //     clearStateProgram: compiled.clearStateProgram,
+    //     globalNumBytes: compiled.globalBytes,
+    //           accounts: [ userAddress ],
+    //            globalNumUint: 2, // <-- Allow 1 uint in global state,
+    // 
+    //   })
+    //   .submit().createdApp
+    itxn_submit
+    // contracts/src/MainSmartContract.algo.ts:71
+    // this.users(Txn.sender).value =helloApp
+    txn Sender
+    // contracts/src/MainSmartContract.algo.ts:59-69
+    // const helloApp = itxn
+    //   .applicationCall({
+    //     appArgs: [methodSelector(UserAccountContract.prototype.createApplication),new arc4.Uint64(1) ],
+    //     approvalProgram: compiled.approvalProgram,
+    //     clearStateProgram: compiled.clearStateProgram,
+    //     globalNumBytes: compiled.globalBytes,
+    //           accounts: [ userAddress ],
+    //            globalNumUint: 2, // <-- Allow 1 uint in global state,
+    // 
+    //   })
+    //   .submit().createdApp
+    itxn CreatedApplicationID
+    // contracts/src/MainSmartContract.algo.ts:71
+    // this.users(Txn.sender).value =helloApp
+    itob
+    box_put
+    // contracts/src/MainSmartContract.algo.ts:49
+    // register(payTxn : gtxn.PaymentTxn, userAddress : Account){
+    intc_0 // 1
+    return
