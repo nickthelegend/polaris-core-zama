@@ -24,18 +24,68 @@ type FhevmInstance = {
 // Lazily resolved FHEVM instance (mock or production).
 let _fhevmInstance: FhevmInstance | null = null;
 
+/**
+ * Build a browser-safe mock FHEVM instance for local Hardhat development.
+ * The Hardhat node runs in `fhevm.mocked: true` mode, which means it accepts
+ * plaintext values wrapped in the externalEuint64 format. We encode the amount
+ * as a 32-byte big-endian handle and use an empty proof — the mock coprocessor
+ * accepts this without a real ZK proof.
+ */
+function createMockFhevmInstance(): FhevmInstance {
+  return {
+    createEncryptedInput: (_contractAddress: string, _userAddress: string) => ({
+      add64: (value: bigint) => ({
+        encrypt: async () => {
+          // Encode value as 32-byte big-endian Uint8Array (externalEuint64 handle)
+          const handle = new Uint8Array(32);
+          let v = value;
+          for (let i = 31; i >= 0 && v > BigInt(0); i--) {
+            handle[i] = Number(v & BigInt(0xff));
+            v >>= BigInt(8);
+          }
+          return { handles: [handle], inputProof: new Uint8Array(0) };
+        },
+      }),
+    }),
+    generateKeypair: () => ({
+      publicKey: new Uint8Array(32),
+      privateKey: new Uint8Array(32),
+    }),
+    createEIP712: (_publicKey: Uint8Array, _contractAddress: string) => ({
+      domain: { name: 'MockFHEVM', version: '1', chainId: 31337 },
+      types: { Reencrypt: [{ name: 'publicKey', type: 'bytes32' }] },
+      message: { publicKey: '0x' + '00'.repeat(32) },
+    }),
+    userDecrypt: async (
+      handle: string,
+      _privateKey: Uint8Array,
+      _publicKey: Uint8Array,
+      _signature: string,
+      _contractAddress: string,
+      _userAddress: string
+    ): Promise<bigint> => {
+      // In mock mode the handle IS the plaintext value (big-endian hex)
+      try {
+        return BigInt(handle);
+      } catch {
+        return BigInt(0);
+      }
+    },
+  };
+}
+
 async function getFhevmInstance(): Promise<FhevmInstance> {
   if (_fhevmInstance) return _fhevmInstance;
 
-  // Try the Zama relayer SDK first (production), fall back to the Hardhat mock.
+  // Try the Zama relayer SDK (production browser SDK) if available.
+  // Falls back to a browser-safe mock for local Hardhat development.
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { createInstance } = require('@zama-fhe/relayer-sdk');
-    _fhevmInstance = await createInstance();
+    const mod = require('@zama-fhe/relayer-sdk');
+    _fhevmInstance = await mod.createInstance();
   } catch {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { createInstance } = require('@fhevm/hardhat-plugin/lib/utils/instance');
-    _fhevmInstance = await createInstance();
+    // No production SDK installed — use the mock instance for local dev.
+    _fhevmInstance = createMockFhevmInstance();
   }
 
   return _fhevmInstance!;
@@ -70,6 +120,15 @@ export function useFhePrivateLending() {
     const part = chainId.includes(':') ? chainId.split(':')[1] : chainId;
     return parseInt(part, 10) || NETWORKS.SEPOLIA.id;
   }, [chainId]);
+
+  // Resolve the right contract addresses for the connected network.
+  const getAddresses = useCallback(() => {
+    const networkId = getNetworkId();
+    // Local Hardhat node (chainId 31337) uses LOCAL_HARDHAT addresses
+    if (networkId === NETWORKS.LOCAL_HARDHAT.id) return CONTRACTS.LOCAL_HARDHAT;
+    // Default to PRIVATE_LENDING (Sepolia / other networks)
+    return CONTRACTS.PRIVATE_LENDING;
+  }, [getNetworkId]);
 
   // ── encryptAmount ──────────────────────────────────────────────────────────
   // Requirements 7.1, 7.2, 7.3
@@ -190,7 +249,7 @@ export function useFhePrivateLending() {
       setState(s => ({ ...s, loading: true, error: null }));
       try {
         const networkId = getNetworkId();
-        const contractAddress = CONTRACTS.PRIVATE_LENDING.PRIVATE_COLLATERAL_VAULT;
+        const contractAddress = getAddresses().PRIVATE_COLLATERAL_VAULT;
         const { handle, proof } = await encryptAmount(amount, contractAddress);
         const vault = await getContract(contractAddress, ABIS.PrivateCollateralVault, networkId);
         const tx = await vault.depositCollateral(handle, proof);
@@ -205,7 +264,7 @@ export function useFhePrivateLending() {
         throw err;
       }
     },
-    [encryptAmount, getContract, getNetworkId, decryptCollateral]
+    [encryptAmount, getContract, getNetworkId, getAddresses, decryptCollateral]
   );
 
   // ── withdrawCollateral ─────────────────────────────────────────────────────
@@ -215,7 +274,7 @@ export function useFhePrivateLending() {
       setState(s => ({ ...s, loading: true, error: null }));
       try {
         const networkId = getNetworkId();
-        const contractAddress = CONTRACTS.PRIVATE_LENDING.PRIVATE_COLLATERAL_VAULT;
+        const contractAddress = getAddresses().PRIVATE_COLLATERAL_VAULT;
         const { handle, proof } = await encryptAmount(amount, contractAddress);
         const vault = await getContract(contractAddress, ABIS.PrivateCollateralVault, networkId);
         const tx = await vault.withdrawCollateral(handle, proof);
@@ -230,7 +289,7 @@ export function useFhePrivateLending() {
         throw err;
       }
     },
-    [encryptAmount, getContract, getNetworkId, decryptCollateral]
+    [encryptAmount, getContract, getNetworkId, getAddresses, decryptCollateral]
   );
 
   // ── borrow ─────────────────────────────────────────────────────────────────
@@ -240,7 +299,7 @@ export function useFhePrivateLending() {
       setState(s => ({ ...s, loading: true, error: null }));
       try {
         const networkId = getNetworkId();
-        const contractAddress = CONTRACTS.PRIVATE_LENDING.PRIVATE_BORROW_MANAGER;
+        const contractAddress = getAddresses().PRIVATE_BORROW_MANAGER;
         const { handle, proof } = await encryptAmount(amount, contractAddress);
         const borrowMgr = await getContract(contractAddress, ABIS.PrivateBorrowManager, networkId);
         const tx = await borrowMgr.borrow(handle, proof);
@@ -255,7 +314,7 @@ export function useFhePrivateLending() {
         throw err;
       }
     },
-    [encryptAmount, getContract, getNetworkId, decryptDebt]
+    [encryptAmount, getContract, getNetworkId, getAddresses, decryptDebt]
   );
 
   // ── repay ──────────────────────────────────────────────────────────────────
@@ -265,7 +324,7 @@ export function useFhePrivateLending() {
       setState(s => ({ ...s, loading: true, error: null }));
       try {
         const networkId = getNetworkId();
-        const contractAddress = CONTRACTS.PRIVATE_LENDING.PRIVATE_BORROW_MANAGER;
+        const contractAddress = getAddresses().PRIVATE_BORROW_MANAGER;
         const { handle, proof } = await encryptAmount(amount, contractAddress);
         const borrowMgr = await getContract(contractAddress, ABIS.PrivateBorrowManager, networkId);
         const tx = await borrowMgr.repay(handle, proof);
@@ -280,7 +339,7 @@ export function useFhePrivateLending() {
         throw err;
       }
     },
-    [encryptAmount, getContract, getNetworkId, decryptDebt]
+    [encryptAmount, getContract, getNetworkId, getAddresses, decryptDebt]
   );
 
   // ── supply ─────────────────────────────────────────────────────────────────
@@ -290,7 +349,7 @@ export function useFhePrivateLending() {
       setState(s => ({ ...s, loading: true, error: null }));
       try {
         const networkId = getNetworkId();
-        const contractAddress = CONTRACTS.PRIVATE_LENDING.PRIVATE_LENDING_POOL;
+        const contractAddress = getAddresses().PRIVATE_LENDING_POOL;
         const { handle, proof } = await encryptAmount(amount, contractAddress);
         const pool = await getContract(contractAddress, ABIS.PrivateLendingPool, networkId);
         const tx = await pool.supply(handle, proof);
@@ -305,7 +364,7 @@ export function useFhePrivateLending() {
         throw err;
       }
     },
-    [encryptAmount, getContract, getNetworkId, decryptSupplied]
+    [encryptAmount, getContract, getNetworkId, getAddresses, decryptSupplied]
   );
 
   // ── withdrawSupply ─────────────────────────────────────────────────────────
@@ -315,7 +374,7 @@ export function useFhePrivateLending() {
       setState(s => ({ ...s, loading: true, error: null }));
       try {
         const networkId = getNetworkId();
-        const contractAddress = CONTRACTS.PRIVATE_LENDING.PRIVATE_LENDING_POOL;
+        const contractAddress = getAddresses().PRIVATE_LENDING_POOL;
         const { handle, proof } = await encryptAmount(amount, contractAddress);
         const pool = await getContract(contractAddress, ABIS.PrivateLendingPool, networkId);
         const tx = await pool.withdraw(handle, proof);
@@ -330,7 +389,7 @@ export function useFhePrivateLending() {
         throw err;
       }
     },
-    [encryptAmount, getContract, getNetworkId, decryptSupplied]
+    [encryptAmount, getContract, getNetworkId, getAddresses, decryptSupplied]
   );
 
   return {

@@ -1,18 +1,29 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { ChevronDown, Check, Info, Loader2, CheckCircle2, ExternalLink, ShieldCheck, Coins } from "lucide-react"
+import { ChevronDown, Check, Info, Loader2, CheckCircle2, ExternalLink, ShieldCheck, AlertTriangle } from "lucide-react"
 import { TokenIcon } from "@/components/token-icon"
+import { usePolaris } from "@/hooks/use-polaris"
+import { CONTRACTS, ABIS, NETWORKS } from "@/lib/contracts"
+import { ethers } from "ethers"
 
+// Token metadata: decimals and max per request (10% of 1B)
 const FAUCET_TOKENS = [
-  { symbol: "ETH",  color: "bg-blue-400",   amount: "0.5" },
-  { symbol: "USDC", color: "bg-blue-500",   amount: "1,000" },
-  { symbol: "WBTC", color: "bg-orange-500", amount: "0.01" },
-  { symbol: "BNB",  color: "bg-yellow-500", amount: "2" },
+  { symbol: "WETH", decimals: 18, max: 100_000_000 },
+  { symbol: "USDC", decimals: 6,  max: 100_000_000 },
+  { symbol: "WBTC", decimals: 8,  max: 100_000_000 },
+  { symbol: "BNB",  decimals: 18, max: 100_000_000 },
 ]
 
+const TOKEN_ADDRESSES: Record<string, string> = {
+  WETH: CONTRACTS.MOCK_TOKENS.LOCALHOST.WETH,
+  USDC: CONTRACTS.MOCK_TOKENS.LOCALHOST.USDC,
+  WBTC: CONTRACTS.MOCK_TOKENS.LOCALHOST.WBTC,
+  BNB:  CONTRACTS.MOCK_TOKENS.LOCALHOST.BNB,
+}
+
 function TokenDropdown({ options, value, onChange }: {
-  options: { symbol: string; color: string; amount: string }[]
+  options: typeof FAUCET_TOKENS
   value: string
   onChange: (v: string) => void
 }) {
@@ -50,22 +61,57 @@ function TokenDropdown({ options, value, onChange }: {
 
 export default function FaucetPage() {
   const [token, setToken] = useState("USDC")
+  const [amount, setAmount] = useState("")
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [txHash, setTxHash] = useState("")
+  const [errMsg, setErrMsg] = useState("")
+
   const selected = FAUCET_TOKENS.find(t => t.symbol === token) ?? FAUCET_TOKENS[0]
+  const { getContract, address } = usePolaris()
+
+  // Validate amount against max cap
+  const parsedAmount = parseFloat(amount)
+  const isOverMax = !isNaN(parsedAmount) && parsedAmount > selected.max
+  const isValid = !isNaN(parsedAmount) && parsedAmount > 0 && !isOverMax
 
   const handleDispense = async () => {
-    setStatus("loading")
-    setTimeout(() => {
+    if (!address) { setErrMsg("Connect your wallet first"); setStatus("error"); return }
+    if (!isValid) { setErrMsg(`Enter an amount between 1 and ${selected.max.toLocaleString()}`); setStatus("error"); return }
+
+    const tokenAddress = TOKEN_ADDRESSES[token]
+    if (!tokenAddress || tokenAddress === "0x0000000000000000000000000000000000000000") {
+      setErrMsg("Token not deployed. Run: npm run deploy:tokens in polaris-protocol")
+      setStatus("error")
+      return
+    }
+
+    setStatus("loading"); setErrMsg("")
+    try {
+      const contract = await getContract(tokenAddress, ABIS.MockERC20, NETWORKS.LOCAL_HARDHAT.id)
+      // Convert human amount to raw units based on token decimals
+      const rawAmount = ethers.parseUnits(parsedAmount.toString(), selected.decimals)
+      const tx = await contract.faucet(rawAmount)
+      const receipt = await tx.wait()
+      setTxHash(receipt.hash)
       setStatus("success")
-      setTxHash("0x" + Math.random().toString(16).slice(2, 66))
-    }, 2000)
+      setAmount("")
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.toLowerCase().includes("unsupported") || msg.toLowerCase().includes("chain")) {
+        setErrMsg("Switch MetaMask to Hardhat Local (chainId 31337, RPC http://127.0.0.1:8545)")
+      } else if (msg.includes("Exceeds 10%")) {
+        setErrMsg(`Max is ${selected.max.toLocaleString()} ${token} per request (10% of 1B)`)
+      } else {
+        setErrMsg(msg)
+      }
+      setStatus("error")
+    }
   }
 
   return (
     <div className="flex-1 flex flex-col py-8 gap-8 w-full font-mono text-white">
       <div className="flex flex-col gap-2">
-        <span className="font-mono text-[10px] tracking-[0.4em] text-primary/60 uppercase">Confidential_Faucet // sepolia_only</span>
+        <span className="font-mono text-[10px] tracking-[0.4em] text-primary/60 uppercase">Confidential_Faucet // localhost_only</span>
         <h1 className="text-white text-3xl tracking-tighter font-black uppercase">Testnet Resources</h1>
       </div>
 
@@ -75,53 +121,70 @@ export default function FaucetPage() {
             <div>
               <h3 className="text-xl font-bold text-white">Request Test Tokens</h3>
               <p className="text-xs text-foreground/40 mt-1 leading-relaxed">
-                Get testnet tokens for Sepolia. Tokens are minted directly to your wallet for testing the confidential lending protocol.
+                Enter a custom amount up to 10% of total supply (100M) per request.
               </p>
             </div>
 
-            {/* Token selector */}
-            <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-5 space-y-2">
-              <label className="text-xs text-foreground/40">Select token</label>
+            {/* Token + amount input */}
+            <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-5 space-y-3">
+              <label className="text-xs text-foreground/40">Amount to request</label>
               <div className="flex items-center gap-3">
-                <div className="flex-1">
-                  <div className="text-4xl font-light text-foreground/60">{selected.amount}</div>
-                  <div className="text-xs text-foreground/30 mt-1">Amount to dispense</div>
-                </div>
-                <TokenDropdown options={FAUCET_TOKENS} value={token} onChange={setToken} />
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={e => { setAmount(e.target.value); setStatus("idle"); setErrMsg("") }}
+                  placeholder="0"
+                  min="1"
+                  max={selected.max}
+                  className={`flex-1 bg-transparent text-4xl font-light placeholder:text-foreground/20 focus:outline-none min-w-0 ${isOverMax ? "text-red-400" : "text-foreground/60"}`}
+                />
+                <TokenDropdown options={FAUCET_TOKENS} value={token} onChange={v => { setToken(v); setAmount(""); setStatus("idle") }} />
               </div>
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="text-foreground/30">Max per request</span>
+                <button
+                  type="button"
+                  onClick={() => setAmount(selected.max.toString())}
+                  className="text-primary/70 hover:text-primary font-bold transition-colors"
+                >
+                  {selected.max.toLocaleString()} {token}
+                </button>
+              </div>
+              {isOverMax && (
+                <div className="flex items-center gap-2 text-red-400 text-[11px]">
+                  <AlertTriangle size={12} />
+                  Exceeds 10% cap — max is {selected.max.toLocaleString()} {token}
+                </div>
+              )}
             </div>
 
             {/* Network */}
-            <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-5 space-y-2">
-              <label className="text-xs text-foreground/40">Network</label>
+            <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 text-xs font-bold">S</div>
+                  <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400 text-xs font-bold">H</div>
                   <div>
-                    <div className="text-sm font-semibold text-white">Ethereum Sepolia</div>
-                    <div className="text-[10px] text-foreground/30">Chain ID: 11155111</div>
+                    <div className="text-sm font-semibold text-white">Hardhat Local</div>
+                    <div className="text-[10px] text-foreground/30">Chain ID: 31337 · http://127.0.0.1:8545</div>
                   </div>
                 </div>
-                <span className="text-[10px] text-primary font-bold px-3 py-1 bg-primary/10 rounded-full border border-primary/20">TESTNET</span>
+                <span className="text-[10px] text-yellow-400 font-bold px-3 py-1 bg-yellow-400/10 rounded-full border border-yellow-400/20">LOCAL</span>
               </div>
             </div>
 
-            {/* Privacy notice */}
             <div className="flex items-center gap-2 bg-[#05080f]/40 border border-border/20 rounded-xl px-4 py-3">
               <Info size={14} className="text-foreground/30 flex-shrink-0" />
-              <span className="text-xs text-foreground/40">Tokens are for testing only and have no real-world value</span>
+              <span className="text-xs text-foreground/40">Maximum 100,000,000 tokens per request (10% of 1B total supply)</span>
             </div>
 
             <button
               onClick={handleDispense}
-              disabled={status === "loading"}
+              disabled={status === "loading" || !isValid}
               className="w-full py-4 rounded-2xl bg-purple-500/70 hover:bg-purple-500/90 disabled:opacity-50 text-white font-bold text-sm transition-all flex items-center justify-center gap-2"
             >
-              {status === "loading" ? (
-                <><Loader2 size={16} className="animate-spin" /> Requesting...</>
-              ) : (
-                `Request ${selected.amount} ${token}`
-              )}
+              {status === "loading"
+                ? <><Loader2 size={16} className="animate-spin" /> Requesting...</>
+                : `Request ${amount ? Number(amount).toLocaleString() : "—"} ${token}`}
             </button>
 
             {status === "success" && (
@@ -138,6 +201,12 @@ export default function FaucetPage() {
                 <div className="text-[10px] text-green-400/40 font-mono truncate">HASH: {txHash}</div>
               </div>
             )}
+
+            {(status === "error" || errMsg) && (
+              <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-xs text-red-400">
+                {errMsg}
+              </div>
+            )}
           </div>
         </div>
 
@@ -145,22 +214,34 @@ export default function FaucetPage() {
           <div className="bg-[#05080f]/40 border border-border/40 rounded-3xl p-8 backdrop-blur-md space-y-6">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-primary" />
-              <span className="text-xs font-bold uppercase tracking-widest text-foreground/50">Policy Audit</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-foreground/50">Setup Required</span>
             </div>
-            <p className="text-[11px] text-foreground/40 leading-relaxed uppercase italic">
-              These tokens are minted for testing on Polaris V2. They bear no real-world value and are encrypted by default when supplied to any confidential pool.
-            </p>
+            <div className="space-y-2 text-[11px] text-foreground/40 leading-relaxed font-mono">
+              <p>1. Start Hardhat node:</p>
+              <p className="text-primary/70 pl-2">npx hardhat node</p>
+              <p>2. Deploy mock tokens:</p>
+              <p className="text-primary/70 pl-2">npm run deploy:tokens</p>
+              <p>3. Add Hardhat network to MetaMask</p>
+              <p className="text-primary/70 pl-2">RPC: http://127.0.0.1:8545</p>
+              <p className="text-primary/70 pl-2">Chain ID: 31337</p>
+            </div>
           </div>
 
-          <div className="bg-primary/5 border border-primary/20 rounded-3xl p-8 space-y-6 relative overflow-hidden group">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-              <Coins size={16} /> Dispense Limits
-            </h3>
+          <div className="bg-primary/5 border border-primary/20 rounded-3xl p-8 space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-primary">Dispense Policy</h3>
             <div className="space-y-3 font-mono text-[10px]">
+              <div className="flex justify-between border-b border-primary/10 pb-2">
+                <span className="text-foreground/40">Total Supply</span>
+                <span className="text-white font-bold">1,000,000,000 / token</span>
+              </div>
+              <div className="flex justify-between border-b border-primary/10 pb-2">
+                <span className="text-foreground/40">Max per request</span>
+                <span className="text-primary font-bold">100,000,000 (10%)</span>
+              </div>
               {FAUCET_TOKENS.map(t => (
                 <div key={t.symbol} className="flex justify-between border-b border-primary/10 pb-2 last:border-0">
                   <span className="text-foreground/40">{t.symbol}</span>
-                  <span className="text-primary font-bold">{t.amount} / request</span>
+                  <span className="text-foreground/60">{t.decimals} decimals</span>
                 </div>
               ))}
             </div>

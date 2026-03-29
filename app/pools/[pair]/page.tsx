@@ -1,10 +1,11 @@
 "use client"
 
-import { use } from "react"
+import { use, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Lock, ShieldCheck, TrendingUp, TrendingDown, Zap } from "lucide-react"
+import { ArrowLeft, Lock, ShieldCheck, TrendingUp, TrendingDown, Zap, Loader2 } from "lucide-react"
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from "recharts"
 import { TokenIcon } from "@/components/token-icon"
+import { useFhePrivateLending } from "@/hooks/use-fhe-private-lending"
 
 const POOL_DATA: Record<string, {
   symbol: string
@@ -94,6 +95,41 @@ export default function PoolDetailPage({ params }: { params: Promise<{ pair: str
   const { pair } = use(params)
   const pool = POOL_DATA[pair.toLowerCase()]
 
+  const [supplyAmount, setSupplyAmount] = useState("")
+  const [borrowAmount, setBorrowAmount] = useState("")
+  const [supplyTx, setSupplyTx] = useState<string | null>(null)
+  const [borrowTx, setBorrowTx] = useState<string | null>(null)
+  const [supplyErr, setSupplyErr] = useState<string | null>(null)
+  const [borrowErr, setBorrowErr] = useState<string | null>(null)
+
+  const { supply, borrow, loading, error } = useFhePrivateLending()
+
+  const handleSupply = async () => {
+    if (!supplyAmount || parseFloat(supplyAmount) <= 0) return
+    setSupplyErr(null); setSupplyTx(null)
+    try {
+      const wei = BigInt(Math.floor(parseFloat(supplyAmount) * 1e9)) * BigInt(1e9)
+      const hash = await supply(wei)
+      setSupplyTx(hash)
+      setSupplyAmount("")
+    } catch (err: unknown) {
+      setSupplyErr(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  const handleBorrow = async () => {
+    if (!borrowAmount || parseFloat(borrowAmount) <= 0) return
+    setBorrowErr(null); setBorrowTx(null)
+    try {
+      const wei = BigInt(Math.floor(parseFloat(borrowAmount) * 1e9)) * BigInt(1e9)
+      const hash = await borrow(wei)
+      setBorrowTx(hash)
+      setBorrowAmount("")
+    } catch (err: unknown) {
+      setBorrowErr(err instanceof Error ? err.message : String(err))
+    }
+  }
+
   if (!pool) {
     return (
       <div className="flex flex-col items-center justify-center py-32 font-mono text-white gap-4">
@@ -136,7 +172,6 @@ export default function PoolDetailPage({ params }: { params: Promise<{ pair: str
 
       {/* Charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Supply APY Chart */}
         <div className="bg-card/20 border border-border/40 rounded-3xl p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] text-foreground/40 uppercase tracking-widest">Supply APY</span>
@@ -148,7 +183,6 @@ export default function PoolDetailPage({ params }: { params: Promise<{ pair: str
           <Sparkline data={pool.supplyData} color="#4ade80" />
         </div>
 
-        {/* Borrow APY Chart */}
         <div className="bg-card/20 border border-border/40 rounded-3xl p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] text-foreground/40 uppercase tracking-widest">Borrow APY</span>
@@ -163,6 +197,7 @@ export default function PoolDetailPage({ params }: { params: Promise<{ pair: str
 
       {/* Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Supply */}
         <div className="bg-[#05080f]/40 border border-primary/20 rounded-3xl p-8 backdrop-blur-md flex flex-col gap-6">
           <div>
             <p className="text-[10px] text-foreground/40 uppercase tracking-widest mb-1">Supply {pool.symbol}</p>
@@ -172,6 +207,8 @@ export default function PoolDetailPage({ params }: { params: Promise<{ pair: str
             <input
               type="number"
               placeholder="0.00"
+              value={supplyAmount}
+              onChange={e => setSupplyAmount(e.target.value)}
               className="w-full bg-secondary/20 border border-border/30 rounded-xl px-4 py-3 text-white text-sm font-mono placeholder:text-foreground/20 focus:outline-none focus:border-primary/40"
             />
             <div className="flex items-center justify-between text-[10px] text-foreground/30 uppercase tracking-widest">
@@ -179,11 +216,19 @@ export default function PoolDetailPage({ params }: { params: Promise<{ pair: str
               <span className="flex items-center gap-1"><Lock size={10} className="text-primary/40" /> Private</span>
             </div>
           </div>
-          <button className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
+          {supplyErr && <p className="text-xs text-red-400">{supplyErr}</p>}
+          {supplyTx && <p className="text-xs text-green-400 font-mono truncate">TX: {supplyTx}</p>}
+          <button
+            onClick={handleSupply}
+            disabled={loading || !supplyAmount}
+            className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {loading ? <Loader2 size={14} className="animate-spin" /> : null}
             Supply {pool.symbol}
           </button>
         </div>
 
+        {/* Borrow */}
         <div className="bg-[#05080f]/40 border border-border/30 rounded-3xl p-8 backdrop-blur-md flex flex-col gap-6">
           <div>
             <p className="text-[10px] text-foreground/40 uppercase tracking-widest mb-1">Borrow {pool.symbol}</p>
@@ -193,6 +238,8 @@ export default function PoolDetailPage({ params }: { params: Promise<{ pair: str
             <input
               type="number"
               placeholder="0.00"
+              value={borrowAmount}
+              onChange={e => setBorrowAmount(e.target.value)}
               className="w-full bg-secondary/20 border border-border/30 rounded-xl px-4 py-3 text-white text-sm font-mono placeholder:text-foreground/20 focus:outline-none focus:border-border/60"
             />
             <div className="flex items-center justify-between text-[10px] text-foreground/30 uppercase tracking-widest">
@@ -200,7 +247,14 @@ export default function PoolDetailPage({ params }: { params: Promise<{ pair: str
               <span className="flex items-center gap-1"><Lock size={10} className="text-primary/40" /> Private</span>
             </div>
           </div>
-          <button className="w-full py-3 rounded-xl border border-border/40 bg-secondary/30 text-white font-bold text-xs uppercase tracking-widest hover:bg-secondary/50 transition-colors">
+          {borrowErr && <p className="text-xs text-red-400">{borrowErr}</p>}
+          {borrowTx && <p className="text-xs text-green-400 font-mono truncate">TX: {borrowTx}</p>}
+          <button
+            onClick={handleBorrow}
+            disabled={loading || !borrowAmount}
+            className="w-full py-3 rounded-xl border border-border/40 bg-secondary/30 text-white font-bold text-xs uppercase tracking-widest hover:bg-secondary/50 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {loading ? <Loader2 size={14} className="animate-spin" /> : null}
             Borrow {pool.symbol}
           </button>
         </div>

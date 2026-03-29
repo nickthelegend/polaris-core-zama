@@ -88,22 +88,28 @@ export const CONTRACTS = {
         USDC: "0xbCFCF4D1B880Ea38b71E45394FaCC5b71678C44A",
         USDT: "0xf75C8eE5b4a005120bCF0D6d457A8000dddDea8f"
     },
-    // FHE Private Lending contracts (deployed on Sepolia / local Hardhat).
-    // Update these addresses after running `npx hardhat run scripts/deploy-private-lending.js`.
+    // FHE Private Lending contracts — local Hardhat (chainId 31337)
     PRIVATE_LENDING: {
-        PRIVATE_COLLATERAL_VAULT: "0x0000000000000000000000000000000000000000",
-        PRIVATE_BORROW_MANAGER: "0x0000000000000000000000000000000000000000",
-        PRIVATE_LENDING_POOL: "0x0000000000000000000000000000000000000000",
-        PRIVATE_LIQUIDATION_ENGINE: "0x0000000000000000000000000000000000000000"
+        PRIVATE_COLLATERAL_VAULT: "0x4A679253410272dd5232B3Ff7cF5dbB88f295319",
+        PRIVATE_BORROW_MANAGER: "0x09635F643e140090A9A8Dcd712eD6285858ceBef",
+        PRIVATE_LENDING_POOL: "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
+        PRIVATE_LIQUIDATION_ENGINE: "0xc5a5C42992dECbae36851359345FE25997F5C42d"
     },
-    // FHE Private Lending contracts deployed to a local Hardhat node (chainId 31337).
-    // Run `npm run deploy:local` in polaris-protocol, then copy the addresses from
-    // polaris-protocol/deployments-local-hardhat.json into the fields below.
+    // Same addresses aliased for LOCAL_HARDHAT network resolution
     LOCAL_HARDHAT: {
-        PRIVATE_COLLATERAL_VAULT: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-        PRIVATE_BORROW_MANAGER: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
-        PRIVATE_LENDING_POOL: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-        PRIVATE_LIQUIDATION_ENGINE: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
+        PRIVATE_COLLATERAL_VAULT: "0x4A679253410272dd5232B3Ff7cF5dbB88f295319",
+        PRIVATE_BORROW_MANAGER: "0x09635F643e140090A9A8Dcd712eD6285858ceBef",
+        PRIVATE_LENDING_POOL: "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
+        PRIVATE_LIQUIDATION_ENGINE: "0xc5a5C42992dECbae36851359345FE25997F5C42d"
+    },
+    // Mock ERC20 tokens deployed to local Hardhat node
+    MOCK_TOKENS: {
+        LOCALHOST: {
+            WETH: "0x1291Be112d480055DaFd8a610b7d1e203891C274",
+            USDC: "0x5f3f1dBD7B74C6B46e8c44f98792A1dAf8d69154",
+            WBTC: "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
+            BNB:  "0xCD8a1C3ba11CF5ECfa6267617243239504a98d90",
+        }
     }
 };
 
@@ -173,6 +179,13 @@ export const NETWORKS = {
         id: 1337,
         name: "Localnet",
         rpc: "http://127.0.0.1:7545",
+        explorer: "",
+        icon: "ethereum"
+    },
+    LOCAL_HARDHAT: {
+        id: 31337,
+        name: "Hardhat Local",
+        rpc: "http://127.0.0.1:8545",
         explorer: "",
         icon: "ethereum"
     }

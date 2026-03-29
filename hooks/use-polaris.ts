@@ -44,13 +44,24 @@ export function usePolaris() {
             const currentChainId = parseInt(chainIdPart);
 
             if (currentChainId !== networkId) {
-                console.log(`[POLARIS] Switching from ${currentChainId} to ${networkId}...`);
-                await wallet.switchChain(networkId);
+                // For local networks (Hardhat/Ganache), try switchChain but fall through
+                // if the wallet doesn't support it — the user must switch manually.
+                const isLocal = networkId === 31337 || networkId === 1337;
+                if (!isLocal) {
+                    console.log(`[POLARIS] Switching from ${currentChainId} to ${networkId}...`);
+                    await wallet.switchChain(networkId);
+                } else {
+                    console.warn(`[POLARIS] On chain ${currentChainId}, expected ${networkId}. Switch MetaMask to the local Hardhat network manually.`);
+                }
             }
+
+            // Always use the wallet's current provider — if the user is on the right
+            // chain this works; if not, the transaction will fail with a clear error.
             const provider = new BrowserProvider(await wallet.getEthereumProvider());
             const signer = await provider.getSigner();
             return new Contract(address, actualAbi, signer);
         } else {
+            // For read-only calls always use the configured RPC directly.
             const provider = new JsonRpcProvider(net.rpc);
             return new Contract(address, actualAbi, provider);
         }

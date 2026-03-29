@@ -1,8 +1,9 @@
 ﻿"use client"
 
 import { useState, useRef, useEffect } from "react"
-import { ChevronDown, Check, Info, ShieldAlert, ChevronRight, Lock } from "lucide-react"
+import { ChevronDown, Check, Info, ShieldAlert, ChevronRight, Lock, Loader2 } from "lucide-react"
 import { TokenIcon } from "@/components/token-icon"
+import { useFhePrivateLending } from "@/hooks/use-fhe-private-lending"
 
 const BORROW_ASSETS = [
   { symbol: "gUSD", color: "bg-purple-500" },
@@ -59,6 +60,30 @@ export default function BorrowPage() {
   const [duration, setDuration] = useState("30")
   const [borrowAsset, setBorrowAsset] = useState("gUSD")
   const [collateralAsset, setCollateralAsset] = useState("gETH")
+  const [txHash, setTxHash] = useState<string | null>(null)
+  const [txError, setTxError] = useState<string | null>(null)
+
+  const { borrow, depositCollateral, loading, error, debtBalance, collateralBalance } = useFhePrivateLending()
+
+  const handleSubmit = async () => {
+    setTxError(null)
+    setTxHash(null)
+    try {
+      // First deposit collateral if provided
+      if (collateralAmount && parseFloat(collateralAmount) > 0) {
+        const collateralWei = BigInt(Math.floor(parseFloat(collateralAmount) * 1e9)) * BigInt(1e9)
+        await depositCollateral(collateralWei)
+      }
+      // Then borrow
+      if (borrowAmount && parseFloat(borrowAmount) > 0) {
+        const borrowWei = BigInt(Math.floor(parseFloat(borrowAmount) * 1e9)) * BigInt(1e9)
+        const hash = await borrow(borrowWei)
+        setTxHash(hash)
+      }
+    } catch (err: unknown) {
+      setTxError(err instanceof Error ? err.message : String(err))
+    }
+  }
 
   return (
     <div className="flex-1 flex flex-col py-8 gap-8 w-full font-mono text-white">
@@ -72,7 +97,7 @@ export default function BorrowPage() {
           <div className="p-8 space-y-5">
             <div>
               <h3 className="text-xl font-bold text-white">Borrow with Privacy</h3>
-              <p className="text-xs text-foreground/40 mt-1 leading-relaxed">Submit a private borrow intent. Your max rate is encrypted and only revealed inside the CRE settlement engine.</p>
+              <p className="text-xs text-foreground/40 mt-1 leading-relaxed">Submit a private borrow intent. Your amount is encrypted via Zama FHEVM before hitting the chain.</p>
             </div>
 
             <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-5 space-y-2">
@@ -112,11 +137,27 @@ export default function BorrowPage() {
 
             <div className="flex items-center gap-2 bg-[#05080f]/40 border border-border/20 rounded-xl px-4 py-3">
               <Info size={14} className="text-foreground/30 flex-shrink-0" />
-              <span className="text-xs text-foreground/40">Your max rate is encrypted and hidden from the server</span>
+              <span className="text-xs text-foreground/40">Your amount is encrypted via Zama FHEVM — never visible on-chain</span>
             </div>
 
-            <button className="w-full py-4 rounded-2xl bg-purple-500/70 hover:bg-purple-500/90 text-white font-bold text-sm transition-all">
-              Submit Borrow Intent
+            {(txError || error) && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-xs text-red-400">
+                {txError || error}
+              </div>
+            )}
+
+            {txHash && (
+              <div className="bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 text-xs text-green-400 font-mono truncate">
+                TX: {txHash}
+              </div>
+            )}
+
+            <button
+              onClick={handleSubmit}
+              disabled={loading || (!borrowAmount && !collateralAmount)}
+              className="w-full py-4 rounded-2xl bg-purple-500/70 hover:bg-purple-500/90 disabled:opacity-50 text-white font-bold text-sm transition-all flex items-center justify-center gap-2"
+            >
+              {loading ? <><Loader2 size={16} className="animate-spin" /> Encrypting & Submitting...</> : "Submit Borrow Intent"}
             </button>
           </div>
         </div>
@@ -128,14 +169,14 @@ export default function BorrowPage() {
             </h3>
             <div className="space-y-4">
               {[
-                { label: "Collateral (Encrypted)", value: "••••••••", muted: true },
-                { label: "Projected Loan Value", value: borrowAmount ? `$${Number(borrowAmount).toLocaleString()}` : "—" },
-                { label: "Expected Health Factor", value: "~1.92", highlight: true },
+                { label: "Collateral (Encrypted)", value: collateralBalance !== null ? collateralBalance.toString() : "••••••••", muted: collateralBalance === null },
+                { label: "Projected Loan Value", value: borrowAmount ? `${Number(borrowAmount).toLocaleString()}` : "—" },
+                { label: "Debt Balance (Encrypted)", value: debtBalance !== null ? debtBalance.toString() : "••••••••", muted: debtBalance === null },
                 { label: "Liquidation Price", value: "Hidden", muted: true },
               ].map(row => (
                 <div key={row.label} className="flex justify-between items-center text-[11px] border-b border-border/10 pb-4 last:border-0 last:pb-0">
                   <span className="text-foreground/40">{row.label}</span>
-                  <span className={`font-bold flex items-center gap-1.5 ${row.highlight ? "text-primary" : row.muted ? "text-foreground/30 tracking-widest" : ""}`}>
+                  <span className={`font-bold flex items-center gap-1.5 ${row.muted ? "text-foreground/30 tracking-widest" : "text-primary"}`}>
                     {row.muted && <Lock size={10} />}{row.value}
                   </span>
                 </div>
