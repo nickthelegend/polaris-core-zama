@@ -17,8 +17,8 @@ export default function PositionsPage() {
   const [selectedAsset, setSelectedAsset] = useState<string | null>(null)
 
   const positions = [
-    { type: "SUPPLY", symbol: "USDC", name: "USD Coin", amount: "Private", apy: "4.5%", value: "Private" },
-    { type: "BORROW", symbol: "WETH", name: "Wrapped Ether", amount: "Private", apy: "6.2%", value: "Private" },
+    { type: "SUPPLY", symbol: "USDC", name: "USD Coin", amount: "••••••", apy: "4.5%", value: "Encrypted" },
+    { type: "BORROW", symbol: "WETH", name: "Wrapped Ether", amount: "••••••", apy: "6.2%", value: "Encrypted" },
   ]
 
   return (
@@ -38,7 +38,7 @@ export default function PositionsPage() {
             <Lock size={80} />
           </div>
           <span className="text-[10px] text-foreground/40 uppercase tracking-widest">Net_Supply</span>
-          <div className="text-3xl font-bold tracking-tight">Private</div>
+          <div className="text-3xl font-bold tracking-tight">••••••••</div>
           <div className="text-[10px] text-primary/60 flex items-center gap-1 mt-2 uppercase tracking-widest">
             <ShieldCheck size={12} />
             Encrypted
@@ -49,7 +49,7 @@ export default function PositionsPage() {
             <Zap size={80} />
           </div>
           <span className="text-[10px] text-foreground/40 uppercase tracking-widest">Net_Debt</span>
-          <div className="text-3xl font-bold tracking-tight">Private</div>
+          <div className="text-3xl font-bold tracking-tight">••••••••</div>
           <div className="text-[10px] text-red-400 flex items-center gap-1 mt-2 uppercase tracking-widest">
             <TrendingUp size={12} />
             Encrypted
@@ -121,16 +121,13 @@ export default function PositionsPage() {
              <div className="space-y-3">
                 <div className="flex justify-between text-[11px] font-bold">
                   <span>USDC_COLLATERAL</span>
-                  <span className="text-foreground/40 italic">Private</span>
-                </div>
-                <div className="h-1.5 bg-secondary/50 rounded-full overflow-hidden">
-                   <div className="h-full w-[65%] bg-primary shadow-[0_0_8px_rgba(var(--primary),0.4)]" />
+                  <span className="text-foreground/40 italic">Encrypted</span>
                 </div>
              </div>
              <div className="space-y-3">
                 <div className="flex justify-between text-[11px] font-bold">
                   <span>WETH_COLLATERAL</span>
-                  <span className="text-foreground/40 italic">Private</span>
+                  <span className="text-foreground/40 italic">Encrypted</span>
                 </div>
                 <div className="h-1.5 bg-secondary/50 rounded-full overflow-hidden">
                    <div className="h-full w-[35%] bg-blue-500 shadow-[0_0_8px_rgba(0,100,255,0.4)]" />

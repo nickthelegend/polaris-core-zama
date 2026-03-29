@@ -38,7 +38,7 @@ export default function TransactionsPage() {
         <div className="bg-[#05080f]/40 border border-primary/20 rounded-2xl p-8 relative overflow-hidden group backdrop-blur-md">
           <p className="text-foreground/50 text-[10px] font-bold uppercase tracking-[0.2em] mb-2">Total Supplied</p>
           <div className="flex items-baseline gap-2">
-            <h1 className="text-white text-4xl font-black tracking-tighter tabular-nums">Private</h1>
+            <h1 className="text-white text-4xl font-black tracking-tighter tabular-nums">••••••••</h1>
           </div>
           <Database className="absolute -bottom-2 -right-2 w-16 h-16 text-primary/5 group-hover:text-primary/10 transition-colors" />
         </div>
@@ -46,7 +46,7 @@ export default function TransactionsPage() {
         <div className="bg-[#05080f]/40 border border-border/40 rounded-2xl p-8 relative overflow-hidden group backdrop-blur-md">
           <p className="text-foreground/50 text-[10px] font-bold uppercase tracking-[0.2em] mb-2">Total Borrowed</p>
           <div className="flex items-baseline gap-2">
-            <h1 className="text-white text-4xl font-black tracking-tighter tabular-nums">Private</h1>
+            <h1 className="text-white text-4xl font-black tracking-tighter tabular-nums">••••••••</h1>
           </div>
           <Zap className="absolute -bottom-2 -right-2 w-16 h-16 text-red-500/5 group-hover:text-red-500/10 transition-colors" />
         </div>

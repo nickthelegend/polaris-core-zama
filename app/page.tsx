@@ -216,7 +216,7 @@ function PrivateActionWidget() {
 }
 
 export default function Page() {
-  const stats = { totalSupplied: "Private", totalBorrowed: "Private", healthFactor: "Safe", availableCredit: "Private" }
+  const stats = { totalSupplied: "••••••••", totalBorrowed: "••••••••", healthFactor: "Safe", availableCredit: "Hidden" }
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 font-mono">
       <div className="lg:col-span-7 space-y-8">

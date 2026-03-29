@@ -1,168 +1,171 @@
 "use client"
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { 
-  Loader2, 
-  CheckCircle2, 
-  AlertCircle, 
-  Zap, 
-  Database, 
-  Wallet, 
-  ExternalLink, 
-  Coins, 
-  ShieldCheck,
-  Lock
-} from "lucide-react"
+
+import { useState, useRef, useEffect } from "react"
+import { ChevronDown, Check, Info, Loader2, CheckCircle2, ExternalLink, ShieldCheck, Coins } from "lucide-react"
+
+const FAUCET_TOKENS = [
+  { symbol: "ETH",  color: "bg-blue-400",   amount: "0.5" },
+  { symbol: "USDC", color: "bg-blue-500",   amount: "1,000" },
+  { symbol: "WBTC", color: "bg-orange-500", amount: "0.01" },
+  { symbol: "LINK", color: "bg-blue-600",   amount: "50" },
+]
+
+function TokenDropdown({ options, value, onChange }: {
+  options: { symbol: string; color: string; amount: string }[]
+  value: string
+  onChange: (v: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const selected = options.find(o => o.symbol === value) ?? options[0]
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener("mousedown", h)
+    return () => document.removeEventListener("mousedown", h)
+  }, [])
+  return (
+    <div ref={ref} className="relative flex-shrink-0">
+      <button type="button" onClick={() => setOpen(p => !p)}
+        className="flex items-center gap-2 bg-[#1a1d24] border border-border/40 hover:border-primary/40 rounded-xl px-3 py-2.5 transition-colors min-w-[110px]">
+        <div className={`w-5 h-5 rounded-full flex-shrink-0 ${selected.color} flex items-center justify-center text-[9px] font-bold text-white`}>{selected.symbol[0]}</div>
+        <span className="text-sm font-semibold text-white">{selected.symbol}</span>
+        <ChevronDown size={13} className={`text-foreground/40 transition-transform ml-auto ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 bg-[#0d0f14] border border-border/40 rounded-xl overflow-hidden shadow-2xl min-w-[140px]">
+          {options.map(opt => (
+            <button key={opt.symbol} type="button" onClick={() => { onChange(opt.symbol); setOpen(false) }}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-primary/10 transition-colors text-left">
+              <div className={`w-5 h-5 rounded-full flex-shrink-0 ${opt.color} flex items-center justify-center text-[9px] font-bold text-white`}>{opt.symbol[0]}</div>
+              <span className="text-sm text-white">{opt.symbol}</span>
+              {opt.symbol === value && <Check size={12} className="text-primary ml-auto" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function FaucetPage() {
-    const [token, setToken] = useState<string>("USDC")
-    const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
-    const [txHash, setTxHash] = useState<string>("")
+  const [token, setToken] = useState("USDC")
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
+  const [txHash, setTxHash] = useState("")
+  const selected = FAUCET_TOKENS.find(t => t.symbol === token) ?? FAUCET_TOKENS[0]
 
-    const tokens = [
-      { symbol: "USDC", name: "USD Coin" },
-      { symbol: "WETH", name: "Wrapped Ethereum" },
-      { symbol: "WBTC", name: "Wrapped Bitcoin" },
-      { symbol: "LINK", name: "Chainlink" }
-    ]
+  const handleDispense = async () => {
+    setStatus("loading")
+    setTimeout(() => {
+      setStatus("success")
+      setTxHash("0x" + Math.random().toString(16).slice(2, 66))
+    }, 2000)
+  }
 
-    const handleMint = async () => {
-        setStatus("loading")
-        // Mocking a successful mint on Sepolia
-        setTimeout(() => {
-          setStatus("success")
-          setTxHash("0x" + Math.random().toString(16).slice(2, 66))
-        }, 2000)
-    }
+  return (
+    <div className="flex-1 flex flex-col py-8 gap-8 w-full font-mono text-white">
+      <div className="flex flex-col gap-2">
+        <span className="font-mono text-[10px] tracking-[0.4em] text-primary/60 uppercase">Confidential_Faucet // sepolia_only</span>
+        <h1 className="text-white text-3xl tracking-tighter font-black uppercase">Testnet Resources</h1>
+      </div>
 
-    return (
-        <div className="flex-1 flex flex-col py-8 gap-8 w-full font-mono text-white max-w-6xl mx-auto">
-            <div className="flex flex-col gap-1">
-                <span className="font-mono text-[10px] tracking-[0.4em] text-primary/60 uppercase">
-                  Confidential_Faucet // sepolia_only
-                </span>
-                <h1 className="text-white text-3xl tracking-tighter font-black uppercase">
-                  Testnet Resources
-                </h1>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="lg:col-span-7 bg-[#0d0f14] border border-border/30 rounded-3xl overflow-hidden">
+          <div className="p-8 space-y-5">
+            <div>
+              <h3 className="text-xl font-bold text-white">Request Test Tokens</h3>
+              <p className="text-xs text-foreground/40 mt-1 leading-relaxed">
+                Get testnet tokens for Sepolia. Tokens are minted directly to your wallet for testing the confidential lending protocol.
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                <div className="lg:col-span-8 flex flex-col gap-8">
-                    <div className="bg-[#05080f]/40 border border-primary/20 rounded-3xl overflow-hidden shadow-2xl flex flex-col backdrop-blur-xl">
-                        <div className="bg-white/5 px-6 py-4 border-b border-white/10 flex justify-between items-center">
-                            <span className="text-[10px] text-white/40 uppercase tracking-widest">Resource_Terminal</span>
-                            <div className="flex items-center gap-2 text-[10px] text-primary animate-pulse">
-                                <span className="w-1.5 h-1.5 bg-primary rounded-full" />
-                                READY_FOR_DISPENSE
-                            </div>
-                        </div>
-
-                        <div className="p-10 flex flex-col gap-10">
-                            <div className="space-y-4">
-                                <label className="text-[10px] text-white/40 uppercase font-bold tracking-[0.3em]">1. Select Asset</label>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                    {tokens.map((t) => (
-                                        <button 
-                                          key={t.symbol}
-                                          onClick={() => setToken(t.symbol)}
-                                          className={`p-6 rounded-2xl border transition-all flex flex-col items-center gap-3 ${token === t.symbol ? 'bg-primary/10 border-primary text-primary' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'}`}
-                                        >
-                                            <div className="w-10 h-10 rounded-xl bg-background/50 border border-border/20 flex items-center justify-center font-bold text-xs">
-                                              {t.symbol[0]}
-                                            </div>
-                                            <span className="text-xs font-black">{t.symbol}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <label className="text-[10px] text-white/40 uppercase font-bold tracking-[0.3em]">2. Protocol Network</label>
-                                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex items-center justify-between">
-                                   <div className="flex items-center gap-4">
-                                      <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-                                        <Database size={20} />
-                                      </div>
-                                      <div>
-                                        <p className="text-sm font-bold">Ethereum Sepolia</p>
-                                        <p className="text-[10px] text-foreground/30 uppercase">Required for Confidential Lending</p>
-                                      </div>
-                                   </div>
-                                   <div className="text-[10px] text-primary font-bold px-3 py-1 bg-primary/10 rounded-full border border-primary/20">LOCKED</div>
-                                </div>
-                            </div>
-
-                            <Button
-                                className="w-full h-16 bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs uppercase tracking-[0.3em] rounded-2xl shadow-xl shadow-primary/20 transition-all active:scale-95"
-                                onClick={handleMint}
-                                disabled={status === "loading"}
-                            >
-                                {status === "loading" ? (
-                                    <div className="flex items-center gap-3">
-                                        <Loader2 className="w-5 h-5 animate-spin" />
-                                        COMMITTING_MINT_TX...
-                                    </div>
-                                ) : (
-                                    "INITIATE_DISPENSE_SEQUENCE"
-                                )}
-                            </Button>
-
-                            {status === "success" && (
-                                <div className="bg-green-500/10 border border-green-500/20 p-6 rounded-2xl flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-2">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2 text-green-400 text-xs font-bold uppercase tracking-wider">
-                                            <CheckCircle2 className="w-4 h-4" />
-                                            Dispensed_Successfully
-                                        </div>
-                                        <a
-                                            href={`https://sepolia.etherscan.io/tx/${txHash}`}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="text-[10px] text-green-400 underline uppercase font-bold flex items-center gap-1"
-                                        >
-                                            View_Scan <ExternalLink className="w-3 h-3" />
-                                        </a>
-                                    </div>
-                                    <div className="text-[10px] text-green-400/40 font-mono truncate">
-                                        HASH: {txHash}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+            {/* Token selector */}
+            <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-5 space-y-2">
+              <label className="text-xs text-foreground/40">Select token</label>
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <div className="text-4xl font-light text-foreground/60">{selected.amount}</div>
+                  <div className="text-xs text-foreground/30 mt-1">Amount to dispense</div>
                 </div>
-
-                <div className="lg:col-span-4 space-y-8">
-                    <div className="bg-[#05080f]/40 border border-border/40 rounded-3xl p-8 backdrop-blur-md space-y-6">
-                        <div className="flex items-center gap-2 text-white/60">
-                            <ShieldCheck className="w-5 h-5 text-primary" />
-                            <span className="text-xs font-bold uppercase tracking-widest text-foreground/50">Policy Audit</span>
-                        </div>
-                        <p className="text-[11px] text-foreground/40 leading-relaxed uppercase italic">
-                            These tokens are minted directly into your wallet for testing purposes on Polaris V2. They bear no real-world value and are encrypted by default when supplied to any confidential pool.
-                        </p>
-                    </div>
-
-                    <div className="bg-primary/5 border border-primary/20 rounded-3xl p-8 space-y-6 relative overflow-hidden group">
-                        <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:scale-110 transition-transform">
-                          <Lock size={120} className="text-primary" />
-                        </div>
-                        <h3 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-                          <Coins size={16} /> Asset_Safety
-                        </h3>
-                        <div className="space-y-4 font-mono text-[10px]">
-                           <div className="flex justify-between border-b border-primary/10 pb-2">
-                              <span className="text-foreground/40">FHE_COMPLIANT</span>
-                              <span className="text-primary font-bold tracking-tighter">YES</span>
-                           </div>
-                           <div className="flex justify-between border-b border-primary/10 pb-2">
-                              <span className="text-foreground/40">KMS_AUTHORIZED</span>
-                              <span className="text-primary font-bold tracking-tighter">YES</span>
-                           </div>
-                        </div>
-                    </div>
-                </div>
+                <TokenDropdown options={FAUCET_TOKENS} value={token} onChange={setToken} />
+              </div>
             </div>
+
+            {/* Network */}
+            <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-5 space-y-2">
+              <label className="text-xs text-foreground/40">Network</label>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 text-xs font-bold">S</div>
+                  <div>
+                    <div className="text-sm font-semibold text-white">Ethereum Sepolia</div>
+                    <div className="text-[10px] text-foreground/30">Chain ID: 11155111</div>
+                  </div>
+                </div>
+                <span className="text-[10px] text-primary font-bold px-3 py-1 bg-primary/10 rounded-full border border-primary/20">TESTNET</span>
+              </div>
+            </div>
+
+            {/* Privacy notice */}
+            <div className="flex items-center gap-2 bg-[#05080f]/40 border border-border/20 rounded-xl px-4 py-3">
+              <Info size={14} className="text-foreground/30 flex-shrink-0" />
+              <span className="text-xs text-foreground/40">Tokens are for testing only and have no real-world value</span>
+            </div>
+
+            <button
+              onClick={handleDispense}
+              disabled={status === "loading"}
+              className="w-full py-4 rounded-2xl bg-purple-500/70 hover:bg-purple-500/90 disabled:opacity-50 text-white font-bold text-sm transition-all flex items-center justify-center gap-2"
+            >
+              {status === "loading" ? (
+                <><Loader2 size={16} className="animate-spin" /> Requesting...</>
+              ) : (
+                `Request ${selected.amount} ${token}`
+              )}
+            </button>
+
+            {status === "success" && (
+              <div className="bg-green-500/10 border border-green-500/20 p-5 rounded-2xl flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-green-400 text-xs font-bold uppercase tracking-wider">
+                    <CheckCircle2 size={14} /> Dispensed Successfully
+                  </div>
+                  <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noreferrer"
+                    className="text-[10px] text-green-400 underline uppercase font-bold flex items-center gap-1">
+                    View <ExternalLink size={10} />
+                  </a>
+                </div>
+                <div className="text-[10px] text-green-400/40 font-mono truncate">HASH: {txHash}</div>
+              </div>
+            )}
+          </div>
         </div>
-    )
+
+        <div className="lg:col-span-5 space-y-6">
+          <div className="bg-[#05080f]/40 border border-border/40 rounded-3xl p-8 backdrop-blur-md space-y-6">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-primary" />
+              <span className="text-xs font-bold uppercase tracking-widest text-foreground/50">Policy Audit</span>
+            </div>
+            <p className="text-[11px] text-foreground/40 leading-relaxed uppercase italic">
+              These tokens are minted for testing on Polaris V2. They bear no real-world value and are encrypted by default when supplied to any confidential pool.
+            </p>
+          </div>
+
+          <div className="bg-primary/5 border border-primary/20 rounded-3xl p-8 space-y-6 relative overflow-hidden group">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+              <Coins size={16} /> Dispense Limits
+            </h3>
+            <div className="space-y-3 font-mono text-[10px]">
+              {FAUCET_TOKENS.map(t => (
+                <div key={t.symbol} className="flex justify-between border-b border-primary/10 pb-2 last:border-0">
+                  <span className="text-foreground/40">{t.symbol}</span>
+                  <span className="text-primary font-bold">{t.amount} / request</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
