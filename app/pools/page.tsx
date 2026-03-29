@@ -9,12 +9,13 @@ import {
   Info,
   ChevronRight
 } from "lucide-react"
+import { TokenIcon } from "@/components/token-icon"
 
 const pools = [
   { symbol: "ETH",  name: "Ether",          supplyApy: "3.4%", borrowApy: "5.2%", liquidity: "Private", tvl: "$8.1M"  },
   { symbol: "USDC", name: "USD Coin",        supplyApy: "2.1%", borrowApy: "4.8%", liquidity: "Private", tvl: "$12.4M" },
   { symbol: "WBTC", name: "Wrapped Bitcoin", supplyApy: "2.8%", borrowApy: "4.1%", liquidity: "Private", tvl: "$15.2M" },
-  { symbol: "LINK", name: "Chainlink",       supplyApy: "5.1%", borrowApy: "7.5%", liquidity: "Private", tvl: "$3.4M"  },
+  { symbol: "BNB",  name: "BNB",             supplyApy: "5.1%", borrowApy: "7.5%", liquidity: "Private", tvl: "$3.4M"  },
 ]
 
 export default function PoolsPage() {
@@ -70,9 +71,7 @@ export default function PoolsPage() {
               className="grid grid-cols-12 px-8 py-6 items-center hover:bg-primary/5 transition-colors group cursor-pointer"
             >
               <div className="col-span-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-secondary/50 border border-border/30 flex items-center justify-center font-bold text-xs">
-                  {pool.symbol[0]}
-                </div>
+                <TokenIcon symbol={pool.symbol} size={28} className="flex-shrink-0" />
                 <div>
                   <div className="text-sm font-bold text-white group-hover:text-primary transition-colors">{pool.symbol}</div>
                   <div className="text-[10px] text-foreground/40 italic">{pool.name}</div>

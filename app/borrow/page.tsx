@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { ChevronDown, Check, Info, ShieldAlert, ChevronRight, Lock } from "lucide-react"
+import { TokenIcon } from "@/components/token-icon"
 
 const BORROW_ASSETS = [
   { symbol: "gUSD", color: "bg-purple-500" },
@@ -31,7 +32,7 @@ function TokenDropdown({ options, value, onChange }: {
     <div ref={ref} className="relative flex-shrink-0">
       <button type="button" onClick={() => setOpen(p => !p)}
         className="flex items-center gap-2 bg-[#1a1d24] border border-border/40 hover:border-primary/40 rounded-xl px-3 py-2.5 transition-colors min-w-[110px]">
-        <div className={`w-5 h-5 rounded-full flex-shrink-0 ${selected.color} flex items-center justify-center text-[9px] font-bold text-white`}>{selected.symbol[0]}</div>
+        <TokenIcon symbol={selected.symbol} size={20} className="flex-shrink-0" />
         <span className="text-sm font-semibold text-white">{selected.symbol}</span>
         <ChevronDown size={13} className={`text-foreground/40 transition-transform ml-auto ${open ? "rotate-180" : ""}`} />
       </button>
@@ -40,7 +41,7 @@ function TokenDropdown({ options, value, onChange }: {
           {options.map(opt => (
             <button key={opt.symbol} type="button" onClick={() => { onChange(opt.symbol); setOpen(false) }}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-primary/10 transition-colors text-left">
-              <div className={`w-5 h-5 rounded-full flex-shrink-0 ${opt.color} flex items-center justify-center text-[9px] font-bold text-white`}>{opt.symbol[0]}</div>
+              <TokenIcon symbol={opt.symbol} size={20} className="flex-shrink-0" />
               <span className="text-sm text-white">{opt.symbol}</span>
               {opt.symbol === value && <Check size={12} className="text-primary ml-auto" />}
             </button>

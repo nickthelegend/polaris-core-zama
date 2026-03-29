@@ -5,6 +5,7 @@ import {
   ArrowDown, ShieldCheck, Lock, TrendingUp, Zap,
   History, Target, ArrowUpRight, X, Info, ChevronDown, Check
 } from "lucide-react"
+import { TokenIcon } from "@/components/token-icon"
 
 type Position = {
   type: "SUPPLY" | "BORROW"
@@ -36,9 +37,7 @@ function ManageModal({ pos, onClose }: { pos: Position; onClose: () => void }) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-border/20">
           <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${isSupply ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"}`}>
-              {pos.symbol[0]}
-            </div>
+            <TokenIcon symbol={pos.symbol} size={32} className="flex-shrink-0" />
             <div>
               <div className="text-sm font-bold text-white">{pos.symbol}</div>
               <div className={`text-[10px] uppercase tracking-widest ${isSupply ? "text-green-400" : "text-red-400"}`}>{pos.type}</div>
@@ -90,7 +89,7 @@ function ManageModal({ pos, onClose }: { pos: Position; onClose: () => void }) {
                 className="flex-1 bg-transparent text-3xl font-light text-foreground/60 placeholder:text-foreground/20 focus:outline-none min-w-0"
               />
               <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${isSupply ? "bg-green-500/10 border-green-500/20 text-green-400" : "bg-red-500/10 border-red-500/20 text-red-400"}`}>
-                <div className={`w-4 h-4 rounded-full text-[8px] font-bold flex items-center justify-center text-white ${isSupply ? "bg-green-500" : "bg-red-500"}`}>{pos.symbol[0]}</div>
+                <TokenIcon symbol={pos.symbol} size={16} className="flex-shrink-0" />
                 <span className="text-sm font-bold">{pos.symbol}</span>
               </div>
             </div>

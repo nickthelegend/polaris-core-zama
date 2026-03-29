@@ -4,6 +4,7 @@ import { use } from "react"
 import Link from "next/link"
 import { ArrowLeft, Lock, ShieldCheck, TrendingUp, TrendingDown, Zap } from "lucide-react"
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from "recharts"
+import { TokenIcon } from "@/components/token-icon"
 
 const POOL_DATA: Record<string, {
   symbol: string
@@ -52,8 +53,8 @@ const POOL_DATA: Record<string, {
       { day: "Thu", apy: 4.1 }, { day: "Fri", apy: 4.2 }, { day: "Sat", apy: 4.1 }, { day: "Sun", apy: 4.1 },
     ],
   },
-  link: {
-    symbol: "LINK", name: "Chainlink",
+  bnb: {
+    symbol: "BNB", name: "BNB",
     supplyApy: "5.1%", borrowApy: "7.5%", tvl: "$3.4M", utilization: "71%", ltv: "65%",
     supplyData: [
       { day: "Mon", apy: 4.8 }, { day: "Tue", apy: 4.9 }, { day: "Wed", apy: 5.0 },
@@ -109,10 +110,9 @@ export default function PoolDetailPage({ params }: { params: Promise<{ pair: str
         <Link href="/pools" className="p-2 rounded-xl border border-border/30 bg-secondary/20 hover:bg-secondary/40 transition-all">
           <ArrowLeft size={16} />
         </Link>
+        <TokenIcon symbol={pool.symbol} size={28} className="flex-shrink-0" />
         <div>
-          <span className="font-mono text-[10px] tracking-[0.4em] text-primary/60 uppercase">
-            Pool_Detail // {pool.symbol}
-          </span>
+          <span className="font-mono text-[10px] tracking-[0.4em] text-primary/60 uppercase">Pool_Detail // {pool.symbol}</span>
           <h1 className="text-white text-3xl tracking-tighter font-black uppercase">{pool.symbol} / {pool.name}</h1>
         </div>
       </div>
