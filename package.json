@@ -85,7 +85,9 @@
     "zod": "3.25.76"
   },
   "devDependencies": {
+    "@fhevm/hardhat-plugin": "^0.4.2",
     "@tailwindcss/postcss": "^4.1.9",
+    "fast-check": "^3.23.2",
     "@types/jest": "^30.0.0",
     "@types/node": "^22",
     "@types/qrcode": "^1.5.6",

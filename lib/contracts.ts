@@ -10,6 +10,10 @@ import MockOracleRelayerABI from './abis/MockOracleRelayer.json';
 import ScoreManagerABI from './abis/ScoreManager.json';
 import ProtocolFundsABI from './abis/ProtocolFunds.json';
 import CreditOracleABI from './abis/CreditOracle.json';
+import PrivateCollateralVaultABI from './abis/PrivateCollateralVault.json';
+import PrivateBorrowManagerABI from './abis/PrivateBorrowManager.json';
+import PrivateLendingPoolABI from './abis/PrivateLendingPool.json';
+import PrivateLiquidationEngineABI from './abis/PrivateLiquidationEngine.json';
 
 export const CONTRACTS = {
     MASTER: {
@@ -83,6 +87,23 @@ export const CONTRACTS = {
         LIQUIDITY_VAULT: "0x8C213a3Db9187966Ebf8DfD0488A225044265AeF",
         USDC: "0xbCFCF4D1B880Ea38b71E45394FaCC5b71678C44A",
         USDT: "0xf75C8eE5b4a005120bCF0D6d457A8000dddDea8f"
+    },
+    // FHE Private Lending contracts (deployed on Sepolia / local Hardhat).
+    // Update these addresses after running `npx hardhat run scripts/deploy-private-lending.js`.
+    PRIVATE_LENDING: {
+        PRIVATE_COLLATERAL_VAULT: "0x0000000000000000000000000000000000000000",
+        PRIVATE_BORROW_MANAGER: "0x0000000000000000000000000000000000000000",
+        PRIVATE_LENDING_POOL: "0x0000000000000000000000000000000000000000",
+        PRIVATE_LIQUIDATION_ENGINE: "0x0000000000000000000000000000000000000000"
+    },
+    // FHE Private Lending contracts deployed to a local Hardhat node (chainId 31337).
+    // Run `npm run deploy:local` in polaris-protocol, then copy the addresses from
+    // polaris-protocol/deployments-local-hardhat.json into the fields below.
+    LOCAL_HARDHAT: {
+        PRIVATE_COLLATERAL_VAULT: "0x0000000000000000000000000000000000000000",
+        PRIVATE_BORROW_MANAGER: "0x0000000000000000000000000000000000000000",
+        PRIVATE_LENDING_POOL: "0x0000000000000000000000000000000000000000",
+        PRIVATE_LIQUIDATION_ENGINE: "0x0000000000000000000000000000000000000000"
     }
 };
 
@@ -98,7 +119,11 @@ export const ABIS = {
     MockOracleRelayer: MockOracleRelayerABI,
     ScoreManager: ScoreManagerABI,
     ProtocolFunds: ProtocolFundsABI,
-    CreditOracle: CreditOracleABI
+    CreditOracle: CreditOracleABI,
+    PrivateCollateralVault: PrivateCollateralVaultABI,
+    PrivateBorrowManager: PrivateBorrowManagerABI,
+    PrivateLendingPool: PrivateLendingPoolABI,
+    PrivateLiquidationEngine: PrivateLiquidationEngineABI
 };
 
 export const NETWORKS = {
