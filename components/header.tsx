@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { SidebarDrawer } from "./sidebar-drawer"
 import { cn } from "@/lib/utils"
 import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button"
@@ -20,15 +20,6 @@ const NAV = [
 export function AppHeader() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
-
-  useEffect(() => {
-    // Auto-open refer popup once per session
-    const key = "payease:refer:shown"
-    if (!sessionStorage.getItem(key)) {
-      sessionStorage.setItem(key, "1")
-      setTimeout(() => setOpen(true), 400) // small delay after first paint
-    }
-  }, [])
 
   return (
     <header className="sticky top-0 z-40 w-full pt-3 pb-2 ">
