@@ -19,12 +19,12 @@ import { useObolusWallet } from "@/lib/hooks/useObolusWallet"
 import { cn } from "@/lib/utils"
 
 const NAV_ITEMS = [
-  { href: "/", label: "DASHBOARD", icon: LayoutDashboard },
-  { href: "/pools", label: "PIGGY BANK", icon: PiggyBank },
-  { href: "/merchants", label: "SHOP", icon: ShoppingBag },
-  { href: "/limits", label: "LIMITS", icon: Gauge },
-  { href: "https://docs.0rca.network", label: "DOCS", icon: FileText },
-  { href: "/transactions", label: "TRANSACTIONS", icon: History },
+  { href: "/pools", label: "POOLS", icon: PiggyBank },
+  { href: "/borrow", label: "BORROW", icon: ShoppingBag },
+  { href: "/positions", label: "POSITIONS", icon: Gauge },
+  { href: "/transactions", label: "ACTIVITY", icon: History },
+  { href: "/faucet", label: "FAUCET", icon: LayoutDashboard },
+  { href: "/docs", label: "DOCS", icon: FileText },
 ]
 
 export function SidebarDrawer({ open, onOpenChange }: { open?: boolean; onOpenChange?: (v: boolean) => void }) {
