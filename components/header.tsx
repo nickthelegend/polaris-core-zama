@@ -9,13 +9,13 @@ import { cn } from "@/lib/utils"
 import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button"
 
 const NAV = [
+  { href: "/", label: "Dashboard" },
   { href: "/pools", label: "Pools" },
-  { href: "/vaults", label: "Vaults" },
-  { href: "/merchants", label: "Shop" },
-  { href: "/limits", label: "Limits" },
-  { href: "https://docs.0rca.network", label: "Docs" },
+  { href: "/borrow", label: "Borrow" },
+  { href: "/positions", label: "Positions" },
   { href: "/transactions", label: "Transactions" },
   { href: "/faucet", label: "Faucet" },
+  { href: "/docs", label: "Docs" },
 ]
 
 export function AppHeader() {

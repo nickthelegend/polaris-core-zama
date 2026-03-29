@@ -15,9 +15,9 @@ export const viewport = {
 }
 
 export const metadata: Metadata = {
-  title: "Polaris Pay - Yield and Credit on Initia",
-  description: "Polaris Pay revolutionizes payments with yield-serviced credit lines on the Initia blockchain.",
-  keywords: "Initia, DeFi, Polaris Pay, Yield Vaults, Smart Contracts, BNPL",
+  title: "Polaris | Confidential Lending",
+  description: "Polaris Protocol: Next-generation confidential lending on Sepolia powered by Zama FHE.",
+  keywords: "Sepolia, Zama, FHE, Confidential Lending, Privacy, DeFi",
   authors: [{ name: "Polaris Team" }],
   creator: "Polaris",
   publisher: "Polaris",

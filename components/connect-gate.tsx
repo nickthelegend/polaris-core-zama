@@ -25,9 +25,9 @@ export function ConnectGate({ children }: { children: React.ReactNode }) {
           <div className="size-16 bg-primary/10 rounded-full flex items-center justify-center border border-primary/30 mb-6 group cursor-pointer active:scale-95 transition-all">
             <ConnectWalletButton />
           </div>
-          <h1 className="text-xl font-black uppercase tracking-tighter text-white mb-2">AUTH_REQUIRED</h1>
+          <h1 className="text-xl font-black uppercase tracking-tighter text-white mb-2 underline decoration-primary/20">AUTH_REQUIRED</h1>
           <p className="text-[10px] text-white/50 uppercase tracking-[0.1em] leading-relaxed max-w-[200px]">
-            Please establish a link with Obolus to access the Cardano liquidity portal.
+            Please establish a link with Polaris to access the confidential lending terminals.
           </p>
         </div>
       </div>

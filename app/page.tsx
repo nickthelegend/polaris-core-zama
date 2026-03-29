@@ -1,246 +1,178 @@
 "use client"
 
-import { useQuery } from "convex/react"
-import { api } from "@/convex/_generated/api"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import Image from "next/image"
 import {
   Zap,
   History,
-  ArrowUpRight,
-  ChevronRight,
+  ShieldCheck,
+  TrendingUp,
+  CreditCard,
+  Target,
 } from "lucide-react"
 
-import { LandingPage } from "@/components/landing-page"
-import { useObolusWallet } from "@/lib/hooks/useObolusWallet"
-import { useObolus } from "@/hooks/use-obolus"
-import { useState, useEffect } from "react"
-import { formatDistanceToNow } from "date-fns"
-
 export default function Page() {
-  const { connected: authenticated, address } = useObolusWallet()
-
-  const { getCreditLimit, getLoans, loading: obolusLoading } = useObolus()
-  const transactions = useQuery(api.merchants.listTransactions, { userAddress: address || "" }) ?? []
-
-  const [realStats, setRealStats] = useState({
-    limit: 200,
-    used: 0,
-    available: 200,
-    pct: 0,
-    nextDue: "N/A",
-    minDue: "0.00"
-  })
-
-  useEffect(() => {
-    if (authenticated && address) {
-      const updateStats = async () => {
-        try {
-          const limit = await getCreditLimit()
-          const loans = await getLoans()
-
-          let totalUsed = 0
-          let earliestNextDue = "N/A"
-          let minDue = 0
-
-          loans.forEach((l: any) => {
-            if (l.status === 0) { // Active
-              const outstanding = parseFloat(l.principal) - parseFloat(l.repaid)
-              totalUsed += outstanding
-              minDue += outstanding * 0.25
-
-              const dueDate = new Date(l.startTime * 1000 + 14 * 24 * 60 * 60 * 1000)
-              earliestNextDue = dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-            }
-          })
-
-          const totalLimit = parseFloat(limit) + totalUsed
-          const available = parseFloat(limit)
-          const usagePct = totalLimit > 0 ? Math.round((totalUsed / totalLimit) * 100) : 0
-
-          setRealStats({
-            limit: totalLimit,
-            used: totalUsed,
-            available: available,
-            pct: usagePct,
-            nextDue: earliestNextDue,
-            minDue: minDue.toFixed(2)
-          })
-        } catch (e) {
-          console.error("Failed to update terminal stats:", e)
-        }
-      }
-      updateStats()
-    }
-  }, [authenticated, address, getCreditLimit, getLoans, transactions])
-
-  if (!authenticated) {
-    return <LandingPage />
+  // Placeholder stats - will be hydrated from FHEVM
+  const stats = {
+    totalSupplied: "Private",
+    totalBorrowed: "Private",
+    healthFactor: "Safe",
+    availableCredit: "Private",
+    limit: "$100,000"
   }
 
-  const { limit: total, used, available, pct } = realStats
-
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 font-mono">
-      <div className="lg:col-span-8 space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 font-mono">
+      <div className="lg:col-span-8 space-y-8">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-bold tracking-[0.2em] text-foreground/50 uppercase">
-            Credit Analytics // Terminal
-          </h2>
-          <div className="flex items-center gap-2 px-2 py-0.5 rounded border border-primary/30 bg-primary/5 text-[10px] text-primary font-bold tracking-wider uppercase">
-            <div className="w-1 h-1 rounded-full bg-primary animate-pulse" />
-            Active_Session
+          <div className="space-y-1">
+            <h2 className="text-xl font-bold tracking-tight text-foreground">
+              Confidential Asset Overview
+            </h2>
+            <p className="text-xs text-foreground/40 uppercase tracking-widest">
+              Secured by Zama FHEVM // Sepolia Network
+            </p>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/30 bg-primary/5 text-[10px] text-primary font-bold tracking-wider uppercase backdrop-blur-md">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            Shield_Active
           </div>
         </div>
 
-        <div className="bg-card/20 border border-border/40 rounded-2xl p-6 backdrop-blur-sm relative overflow-hidden">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
-            <div className="space-y-4">
+        {/* Confidential Snapshot Card */}
+        <div className="relative group overflow-hidden bg-[#05080f]/50 border border-primary/20 rounded-3xl p-8 backdrop-blur-xl">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <ShieldCheck size={120} />
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 relative z-10">
+            <div className="space-y-6">
               <div>
-                <div className="text-[10px] text-foreground/50 uppercase tracking-widest mb-1">Available Liquidity</div>
-                <div className="text-5xl font-bold tracking-tight text-foreground">
-                  ${available.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                <div className="text-[10px] text-foreground/40 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+                  <CreditCard size={12} className="text-primary" />
+                  Total_Supplied_(Encrypted)
                 </div>
-                <div className="text-[10px] text-foreground/30 uppercase mt-2">
-                  Sys_Total_Limit: ${total.toFixed(2)}
+                <div className="text-5xl font-black tracking-tighter text-foreground font-mono">
+                  {stats.totalSupplied}
+                </div>
+                <p className="text-[10px] text-foreground/20 italic mt-2">
+                  *Only you can decrypt your position data.
+                </p>
+              </div>
+
+              <div>
+                <div className="text-[10px] text-foreground/40 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+                  <History size={12} className="text-primary" />
+                  Total_Borrowed_(Encrypted)
+                </div>
+                <div className="text-4xl font-bold tracking-tight text-white/50">
+                  {stats.totalBorrowed}
                 </div>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex justify-between items-end">
-                <div className="text-[10px] text-foreground/50 uppercase tracking-widest">Utilization_Rate</div>
-                <div className="text-sm font-bold text-primary">{pct}%</div>
+            <div className="flex flex-col justify-between space-y-8">
+              <div className="bg-secondary/20 border border-border/40 rounded-2xl p-6 space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] text-foreground/50 uppercase tracking-widest">Health_Factor</span>
+                  <span className="text-sm font-black text-primary px-2 py-0.5 rounded border border-primary/30">{stats.healthFactor}</span>
+                </div>
+                <div className="h-2 bg-secondary/50 rounded-full overflow-hidden border border-border/10">
+                  <div className="h-full w-[85%] bg-primary shadow-[0_0_15px_rgba(var(--primary),0.6)]" />
+                </div>
+                <div className="flex justify-between text-[10px] text-foreground/30 uppercase">
+                  <span>Threshold: 150%</span>
+                  <span>Current: 185%</span>
+                </div>
               </div>
-              <div className="h-3 bg-secondary rounded-full overflow-hidden border border-border/20">
-                <div
-                  className="h-full bg-primary shadow-[0_0_10px_rgba(var(--primary),0.5)] transition-all duration-500"
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-[10px] text-foreground/40 uppercase">
-                <span>Debt: ${(used).toFixed(2)}</span>
-                <span>Buffer: ${available.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
 
-          <div className="mt-8 pt-8 border-t border-border/20">
-            <div className="text-[10px] text-foreground/50 uppercase tracking-widest mb-4">Upcoming Obligations</div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-background/40 border border-border/30 rounded-xl p-4">
-                <div className="text-[9px] text-foreground/40 uppercase mb-2">Next Settlement</div>
-                <div className="text-sm font-bold">{realStats.nextDue}</div>
-              </div>
-              <div className="bg-background/40 border border-border/30 rounded-xl p-4">
-                <div className="text-[9px] text-foreground/40 uppercase mb-2">Minimum Due</div>
-                <div className="text-sm font-bold text-primary">${realStats.minDue}</div>
-              </div>
-              <div className="bg-background/40 border border-border/30 rounded-xl p-4">
-                <div className="text-[9px] text-foreground/40 uppercase mb-2">Accrued Interest</div>
-                <div className="text-sm font-bold">0.00% APR</div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-background/40 border border-border/30 rounded-xl">
+                  <div className="text-[9px] text-foreground/40 uppercase mb-1">Net APR</div>
+                  <div className="text-sm font-bold text-green-400">+5.24%</div>
+                </div>
+                <div className="p-4 bg-background/40 border border-border/30 rounded-xl">
+                  <div className="text-[9px] text-foreground/40 uppercase mb-1">Borrow Power</div>
+                  <div className="text-sm font-bold text-primary">{stats.availableCredit}</div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-card/20 border border-border/40 rounded-2xl p-6 backdrop-blur-sm">
-          <div className="text-[10px] text-foreground/50 uppercase tracking-widest mb-6">Network Nodes & Partners</div>
-          <div className="overflow-x-auto scrollbar-hide">
-            <div className="flex gap-6 pb-2">
-              {[
-                { name: "Zomato", logo: "/logos/zomato.svg" },
-                { name: "Swiggy", logo: "/logos/swiggy.png" },
-                { name: "Uber", logo: "/logos/uber.svg" },
-                { name: "Netflix", logo: "/logos/netflix.svg" },
-                { name: "Spotify", logo: "/logos/spotify.svg" },
-                { name: "Google", logo: "/logos/google.svg" },
-                { name: "Microsoft", logo: "/logos/microsoft.svg" },
-                { name: "Amazon", logo: "/logos/amazon.svg" },
-                { name: "Apple", logo: "/logos/apple.png" },
-              ].map((partner, i) => (
-                <div
-                  key={i}
-                  className="flex-shrink-0 w-12 h-12 rounded-xl bg-secondary/50 border border-border/30 flex items-center justify-center grayscale hover:grayscale-0 transition-all cursor-pointer overflow-hidden p-2"
-                >
-                  <Image
-                    src={partner.logo}
-                    alt={partner.name}
-                    width={32}
-                    height={32}
-                    className="object-contain"
-                    unoptimized
-                  />
+        {/* Market Tiles */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            { tag: "SUPPLY", asset: "USDC", apy: "4.5%", icon: TrendingUp },
+            { tag: "BORROW", asset: "WETH", apy: "2.1%", icon: Zap },
+            { tag: "ASSETS", asset: "TOTAL", count: "12", icon: Target },
+          ].map((item, i) => (
+            <div key={i} className="bg-card/30 border border-border/50 rounded-2xl p-6 hover:bg-card/50 transition-colors cursor-pointer group">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary">
+                  <item.icon size={18} />
                 </div>
-              ))}
+                <div className="text-[9px] font-bold text-foreground/30 uppercase tracking-widest">{item.tag}</div>
+              </div>
+              <div className="text-lg font-bold">{item.asset}</div>
+              <div className="text-xs text-foreground/50 mt-1">{item.apy || item.count} {item.apy ? 'Avg APY' : 'Configured'}</div>
             </div>
-          </div>
+          ))}
         </div>
       </div>
 
-      <div className="lg:col-span-4 space-y-6">
-        <div className="bg-card/20 border border-border/40 rounded-2xl p-6 backdrop-blur-sm space-y-4">
-          <div className="text-[10px] text-foreground/50 uppercase tracking-widest mb-2">Quick Actions</div>
-          <Link href="/merchants" className="block">
-            <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-6 rounded-xl flex items-center justify-center gap-3 group">
-              <Zap className="w-5 h-5 fill-current group-hover:scale-110 transition-transform" />
-              <span>EXECUTE_PAYMENT</span>
-            </Button>
-          </Link>
-          <Link href="/transactions" className="block">
-            <Button variant="secondary" className="w-full bg-secondary hover:bg-secondary/80 text-foreground font-bold py-6 rounded-xl flex items-center justify-center gap-3">
-              <History className="w-5 h-5" />
-              <span>QUERY_HISTORY</span>
-            </Button>
-          </Link>
-          <Link href="/limits" className="block">
-            <Button variant="secondary" className="w-full bg-secondary hover:bg-secondary/80 text-foreground font-bold py-6 rounded-xl flex items-center justify-center gap-3">
-              <ArrowUpRight className="w-5 h-5" />
-              <span>LIMIT_EXPANSION</span>
-            </Button>
-          </Link>
+      <div className="lg:col-span-4 space-y-8">
+        <div className="bg-card/20 border border-border/40 rounded-3xl p-8 backdrop-blur-sm space-y-6">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/60 border-b border-border/20 pb-4">
+            Terminal Actions
+          </h3>
+          <div className="space-y-4">
+            <Link href="/pools" className="block">
+              <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-7 rounded-2xl flex items-center justify-center gap-3 group">
+                <ShieldCheck className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span>SUPPLY_LIQUIDITY</span>
+              </Button>
+            </Link>
+            <Link href="/borrow" className="block">
+              <Button variant="outline" className="w-full border-border/40 hover:bg-primary/10 text-foreground font-bold py-7 rounded-2xl flex items-center justify-center gap-3">
+                <Zap className="w-5 h-5 text-primary" />
+                <span>BORROW_PRIVATE</span>
+              </Button>
+            </Link>
+          </div>
         </div>
 
-        <div className="bg-card/20 border border-border/40 rounded-2xl p-6 backdrop-blur-sm flex flex-col h-full min-h-[400px]">
-          <div className="flex items-center justify-between mb-6">
-            <div className="text-[10px] text-foreground/50 uppercase tracking-widest">Activity Stream</div>
-            <div className="flex items-center gap-1.5 text-[10px] text-foreground/30 uppercase">
-              Live
-              <div className="w-1 h-1 rounded-full bg-primary animate-pulse" />
+        <div className="bg-[#05080f]/40 border border-border/40 rounded-3xl p-8 backdrop-blur-sm">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 italic">
+              Recent_Chain_Logs
+            </h3>
+            <div className="flex items-center gap-2">
+              <span className="text-[8px] text-foreground/30 uppercase">LIVE</span>
+              <div className="w-1 h-1 rounded-full bg-primary" />
             </div>
           </div>
-
-          <div className="space-y-6 flex-grow">
-            {transactions.length > 0 ? (
-              transactions.slice(0, 5).map((tx: any, i: number) => (
-                <div key={i} className="flex gap-4 group cursor-pointer">
-                  <div className="w-0.5 bg-primary/20 group-hover:bg-primary transition-colors" />
-                  <div className="space-y-1">
-                    <div className="text-[10px] font-bold tracking-wider uppercase text-foreground/90 flex items-center gap-2">
-                      TX_{(tx.txHash || tx._id).substring(2, 8).toUpperCase()}_AUTH
-                      {tx.category === 'repayment' && <span className="text-[8px] bg-green-500/20 text-green-400 px-1 rounded">REPAY</span>}
-                    </div>
-                    <div className="text-[11px] text-foreground/50">
-                      {tx.title} // -${parseFloat(tx.amount || 0).toFixed(2)}
-                    </div>
+          
+          <div className="space-y-8">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex gap-4 border-l-2 border-primary/20 pl-4 py-1 hover:border-primary transition-colors cursor-default">
+                <div className="space-y-1">
+                  <div className="text-[10px] font-mono text-primary/80 tracking-tighter">
+                    TX_REDACTED_HASH_{i}4FC9
                   </div>
-                  <div className="ml-auto text-[10px] text-foreground/20 whitespace-nowrap">
-                    {formatDistanceToNow(new Date(tx._creationTime), { addSuffix: true }).toUpperCase()}
+                  <div className="text-xs font-medium text-foreground/80 leading-snug">
+                    Decrypted call to <span className="text-primary/70">supply()</span>
+                  </div>
+                  <div className="text-[9px] text-foreground/30 uppercase mt-1">
+                    Confirmed // 2.4s ago
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center opacity-30">
-                <History className="w-8 h-8 mb-2" />
-                <span className="text-[10px] uppercase tracking-widest">No Recent Activity</span>
               </div>
-            )}
+            ))}
           </div>
 
-          <Link href="/transactions" className="mt-8 text-[10px] text-foreground/40 uppercase hover:text-primary transition-colors flex items-center gap-2 group">
-            View Full Manifest
-            <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+          <Link href="/transactions" className="mt-10 block text-center text-[10px] font-bold uppercase tracking-[0.3em] text-foreground/40 hover:text-primary transition-colors">
+            View All Confidential Logs
           </Link>
         </div>
       </div>
