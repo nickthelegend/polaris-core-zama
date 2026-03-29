@@ -17,7 +17,7 @@ const COLLATERAL_ASSETS = [
   { symbol: "WETH", color: "bg-blue-400" },
   { symbol: "WBTC", color: "bg-orange-500" },
 ]
-const TABS = ["Borrow", "Lend", "Swap", "Status"] as const
+const TABS = ["Borrow", "Lend", "Swap"] as const
 type Tab = typeof TABS[number]
 
 function TokenDropdown({ options, value, onChange }: {
@@ -186,28 +186,6 @@ function PrivateActionWidget() {
               </div>
             </div>
             <button className="w-full py-4 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm transition-all">Swap</button>
-          </div>
-        )}
-        {tab === "Status" && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-lg font-bold text-white">Protocol Status</h3>
-              <p className="text-xs text-foreground/40 mt-1">Live FHE settlement engine metrics.</p>
-            </div>
-            {[
-              { label: "CRE Settlement Engine", status: "Online", dot: "bg-green-400" },
-              { label: "FHE Encryption Layer", status: "Active", dot: "bg-primary" },
-              { label: "Sepolia Network", status: "Synced", dot: "bg-green-400" },
-              { label: "Oracle Feed", status: "Live", dot: "bg-green-400" },
-            ].map(s => (
-              <div key={s.label} className="flex items-center justify-between bg-[#05080f]/60 border border-border/20 rounded-xl px-4 py-3">
-                <span className="text-xs text-foreground/60">{s.label}</span>
-                <div className="flex items-center gap-2">
-                  <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${s.dot}`} />
-                  <span className="text-xs font-bold text-foreground/80">{s.status}</span>
-                </div>
-              </div>
-            ))}
           </div>
         )}
       </div>
