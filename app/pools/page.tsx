@@ -1,46 +1,46 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
-import { 
-  ShieldCheck, 
-  Lock, 
-  TrendingUp, 
-  Zap,
-  Info,
-  ChevronRight
-} from "lucide-react"
+import { ShieldCheck, Lock, TrendingUp, Info, ChevronRight } from "lucide-react"
 import { TokenIcon } from "@/components/token-icon"
+import { LendingActionModal, type ModalMode, type PoolInfo } from "@/components/lending-action-modal"
 
-const pools = [
-  { symbol: "ETH",  name: "Ether",          supplyApy: "3.4%", borrowApy: "5.2%", liquidity: "Private", tvl: "$8.1M"  },
-  { symbol: "USDC", name: "USD Coin",        supplyApy: "2.1%", borrowApy: "4.8%", liquidity: "Private", tvl: "$12.4M" },
-  { symbol: "WBTC", name: "Wrapped Bitcoin", supplyApy: "2.8%", borrowApy: "4.1%", liquidity: "Private", tvl: "$15.2M" },
-  { symbol: "BNB",  name: "BNB",             supplyApy: "5.1%", borrowApy: "7.5%", liquidity: "Private", tvl: "$3.4M"  },
+const pools: PoolInfo[] = [
+  { symbol: "ETH",  name: "Ether",          supplyApy: "3.4%", borrowApy: "5.2%" },
+  { symbol: "USDC", name: "USD Coin",        supplyApy: "2.1%", borrowApy: "4.8%" },
+  { symbol: "WBTC", name: "Wrapped Bitcoin", supplyApy: "2.8%", borrowApy: "4.1%" },
+  { symbol: "BNB",  name: "BNB",             supplyApy: "5.1%", borrowApy: "7.5%" },
 ]
 
 export default function PoolsPage() {
+  const [modal, setModal] = useState<{ pool: PoolInfo; mode: ModalMode } | null>(null)
+
   return (
     <div className="flex-1 flex flex-col py-8 gap-8 w-full font-mono text-white">
+      {modal && (
+        <LendingActionModal
+          pool={modal.pool}
+          mode={modal.mode}
+          onClose={() => setModal(null)}
+        />
+      )}
+
       <div className="flex flex-col gap-2">
         <span className="font-mono text-[10px] tracking-[0.4em] text-primary/60 uppercase">
           Confidential_Markets // active_pools
         </span>
-        <h1 className="text-white text-3xl tracking-tighter font-black uppercase">
-          Lending Terminals
-        </h1>
+        <h1 className="text-white text-3xl tracking-tighter font-black uppercase">Lending Terminals</h1>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-[#05080f]/40 border border-primary/20 rounded-2xl p-6 backdrop-blur-md flex flex-col gap-2 relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-5">
-            <ShieldCheck size={80} />
-          </div>
+          <div className="absolute top-0 right-0 p-4 opacity-5"><ShieldCheck size={80} /></div>
           <span className="text-[10px] text-foreground/40 uppercase tracking-widest">Global_Liquidity</span>
           <div className="text-3xl font-bold tracking-tight">$39,102,482</div>
           <div className="text-[10px] text-primary/60 flex items-center gap-1 mt-2">
-            <TrendingUp size={12} />
-            +12.4% THIS MONTH
+            <TrendingUp size={12} />+12.4% THIS MONTH
           </div>
         </div>
         <div className="bg-[#05080f]/40 border border-border/40 rounded-2xl p-6 backdrop-blur-md flex flex-col gap-2">
@@ -70,8 +70,12 @@ export default function PoolsPage() {
               href={`/pools/${pool.symbol.toLowerCase()}`}
               className="grid grid-cols-12 px-8 py-6 items-center hover:bg-primary/5 transition-colors group cursor-pointer"
             >
-              <div className="col-span-4 flex items-center gap-4">
-                <TokenIcon symbol={pool.symbol} size={28} className="flex-shrink-0" />
+              <div className="col-span-4 flex items-center gap-3">
+                <TokenIcon
+                  symbol={pool.symbol}
+                  size={pool.symbol === "ETH" ? 18 : 24}
+                  className="flex-shrink-0"
+                />
                 <div>
                   <div className="text-sm font-bold text-white group-hover:text-primary transition-colors">{pool.symbol}</div>
                   <div className="text-[10px] text-foreground/40 italic">{pool.name}</div>
@@ -85,19 +89,18 @@ export default function PoolsPage() {
               </div>
               <div className="col-span-2 text-right">
                 <div className="text-sm font-mono text-white/40 flex items-center justify-end gap-1.5 uppercase">
-                  <Lock size={12} className="text-primary/40" />
-                  {pool.liquidity}
+                  <Lock size={12} className="text-primary/40" />Private
                 </div>
               </div>
               <div className="col-span-2 flex justify-end items-center gap-2">
                 <button
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setModal({ pool, mode: "supply" }) }}
                   className="px-3 py-1.5 rounded-lg border border-primary/20 bg-primary/5 text-primary text-[10px] font-bold uppercase tracking-wider hover:bg-primary/20 transition-all"
                 >
                   Supply
                 </button>
                 <button
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setModal({ pool, mode: "borrow" }) }}
                   className="px-3 py-1.5 rounded-lg border border-border/30 bg-secondary/20 text-white text-[10px] font-bold uppercase tracking-wider hover:bg-secondary/40 transition-all"
                 >
                   Borrow

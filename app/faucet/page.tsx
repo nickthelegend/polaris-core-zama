@@ -1,13 +1,11 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { ChevronDown, Check, Info, Loader2, CheckCircle2, ExternalLink, ShieldCheck, AlertTriangle } from "lucide-react"
+import { ChevronDown, Check, Info, Loader2, CheckCircle2, AlertTriangle, ShieldCheck } from "lucide-react"
 import { TokenIcon } from "@/components/token-icon"
-import { usePolaris } from "@/hooks/use-polaris"
-import { CONTRACTS, ABIS, NETWORKS } from "@/lib/contracts"
+import { CONTRACTS, NETWORKS } from "@/lib/contracts"
 import { ethers } from "ethers"
 
-// Token metadata: decimals and max per request (10% of 1B)
 const FAUCET_TOKENS = [
   { symbol: "WETH", decimals: 18, max: 100_000_000 },
   { symbol: "USDC", decimals: 6,  max: 100_000_000 },
@@ -21,6 +19,10 @@ const TOKEN_ADDRESSES: Record<string, string> = {
   WBTC: CONTRACTS.MOCK_TOKENS.LOCALHOST.WBTC,
   BNB:  CONTRACTS.MOCK_TOKENS.LOCALHOST.BNB,
 }
+
+// Hardhat account #0 — always has 10,000 ETH, is owner of mock tokens
+const DEPLOYER_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+const MINT_ABI = ["function mint(address to, uint256 amount) external"]
 
 function TokenDropdown({ options, value, onChange }: {
   options: typeof FAUCET_TOKENS
@@ -62,21 +64,21 @@ function TokenDropdown({ options, value, onChange }: {
 export default function FaucetPage() {
   const [token, setToken] = useState("USDC")
   const [amount, setAmount] = useState("")
+  const [recipient, setRecipient] = useState("")
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [txHash, setTxHash] = useState("")
   const [errMsg, setErrMsg] = useState("")
 
   const selected = FAUCET_TOKENS.find(t => t.symbol === token) ?? FAUCET_TOKENS[0]
-  const { getContract, address } = usePolaris()
-
-  // Validate amount against max cap
   const parsedAmount = parseFloat(amount)
   const isOverMax = !isNaN(parsedAmount) && parsedAmount > selected.max
-  const isValid = !isNaN(parsedAmount) && parsedAmount > 0 && !isOverMax
+  const isValidAmount = !isNaN(parsedAmount) && parsedAmount > 0 && !isOverMax
+  const isValidRecipient = ethers.isAddress(recipient)
+  const canSubmit = isValidAmount && isValidRecipient
 
   const handleDispense = async () => {
-    if (!address) { setErrMsg("Connect your wallet first"); setStatus("error"); return }
-    if (!isValid) { setErrMsg(`Enter an amount between 1 and ${selected.max.toLocaleString()}`); setStatus("error"); return }
+    if (!canSubmit) return
+    setStatus("loading"); setErrMsg("")
 
     const tokenAddress = TOKEN_ADDRESSES[token]
     if (!tokenAddress || tokenAddress === "0x0000000000000000000000000000000000000000") {
@@ -85,25 +87,20 @@ export default function FaucetPage() {
       return
     }
 
-    setStatus("loading"); setErrMsg("")
     try {
-      const contract = await getContract(tokenAddress, ABIS.MockERC20, NETWORKS.LOCAL_HARDHAT.id)
-      // Convert human amount to raw units based on token decimals
+      // Use deployer key directly via RPC — no MetaMask, no gas from user wallet
+      const provider = new ethers.JsonRpcProvider(NETWORKS.LOCAL_HARDHAT.rpc)
+      const deployer = new ethers.Wallet(DEPLOYER_KEY, provider)
+      const contract = new ethers.Contract(tokenAddress, MINT_ABI, deployer)
       const rawAmount = ethers.parseUnits(parsedAmount.toString(), selected.decimals)
-      const tx = await contract.faucet(rawAmount)
+      const tx = await contract.mint(recipient, rawAmount)
       const receipt = await tx.wait()
       setTxHash(receipt.hash)
       setStatus("success")
       setAmount("")
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
-      if (msg.toLowerCase().includes("unsupported") || msg.toLowerCase().includes("chain")) {
-        setErrMsg("Switch MetaMask to Hardhat Local (chainId 31337, RPC http://127.0.0.1:8545)")
-      } else if (msg.includes("Exceeds 10%")) {
-        setErrMsg(`Max is ${selected.max.toLocaleString()} ${token} per request (10% of 1B)`)
-      } else {
-        setErrMsg(msg)
-      }
+      setErrMsg(msg)
       setStatus("error")
     }
   }
@@ -121,88 +118,65 @@ export default function FaucetPage() {
             <div>
               <h3 className="text-xl font-bold text-white">Request Test Tokens</h3>
               <p className="text-xs text-foreground/40 mt-1 leading-relaxed">
-                Enter a custom amount up to 10% of total supply (100M) per request.
+                Tokens are minted by the deployer directly — your wallet needs no ETH for gas.
               </p>
             </div>
 
-            {/* Token + amount input */}
+            {/* Recipient */}
+            <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-5 space-y-2">
+              <label className="text-xs text-foreground/40">Recipient address</label>
+              <input type="text" value={recipient} onChange={e => setRecipient(e.target.value.trim())}
+                placeholder="0xcced528..."
+                className={`w-full bg-transparent text-sm font-mono placeholder:text-foreground/20 focus:outline-none ${recipient && !isValidRecipient ? "text-red-400" : "text-foreground/70"}`} />
+              {recipient && !isValidRecipient && <p className="text-[10px] text-red-400">Invalid address</p>}
+            </div>
+
+            {/* Amount + token */}
             <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-5 space-y-3">
-              <label className="text-xs text-foreground/40">Amount to request</label>
+              <label className="text-xs text-foreground/40">Amount to mint</label>
               <div className="flex items-center gap-3">
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={e => { setAmount(e.target.value); setStatus("idle"); setErrMsg("") }}
+                <input type="number" value={amount} onChange={e => { setAmount(e.target.value); setStatus("idle") }}
                   placeholder="0"
-                  min="1"
-                  max={selected.max}
-                  className={`flex-1 bg-transparent text-4xl font-light placeholder:text-foreground/20 focus:outline-none min-w-0 ${isOverMax ? "text-red-400" : "text-foreground/60"}`}
-                />
+                  className={`flex-1 bg-transparent text-4xl font-light placeholder:text-foreground/20 focus:outline-none min-w-0 ${isOverMax ? "text-red-400" : "text-foreground/60"}`} />
                 <TokenDropdown options={FAUCET_TOKENS} value={token} onChange={v => { setToken(v); setAmount(""); setStatus("idle") }} />
               </div>
               <div className="flex items-center justify-between text-[10px]">
                 <span className="text-foreground/30">Max per request</span>
-                <button
-                  type="button"
-                  onClick={() => setAmount(selected.max.toString())}
-                  className="text-primary/70 hover:text-primary font-bold transition-colors"
-                >
+                <button type="button" onClick={() => setAmount(selected.max.toString())}
+                  className="text-primary/70 hover:text-primary font-bold transition-colors">
                   {selected.max.toLocaleString()} {token}
                 </button>
               </div>
               {isOverMax && (
                 <div className="flex items-center gap-2 text-red-400 text-[11px]">
                   <AlertTriangle size={12} />
-                  Exceeds 10% cap — max is {selected.max.toLocaleString()} {token}
+                  Max is {selected.max.toLocaleString()} {token} (10% of 1B)
                 </div>
               )}
             </div>
 
-            {/* Network */}
-            <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400 text-xs font-bold">H</div>
-                  <div>
-                    <div className="text-sm font-semibold text-white">Hardhat Local</div>
-                    <div className="text-[10px] text-foreground/30">Chain ID: 31337 · http://127.0.0.1:8545</div>
-                  </div>
-                </div>
-                <span className="text-[10px] text-yellow-400 font-bold px-3 py-1 bg-yellow-400/10 rounded-full border border-yellow-400/20">LOCAL</span>
-              </div>
-            </div>
-
             <div className="flex items-center gap-2 bg-[#05080f]/40 border border-border/20 rounded-xl px-4 py-3">
               <Info size={14} className="text-foreground/30 flex-shrink-0" />
-              <span className="text-xs text-foreground/40">Maximum 100,000,000 tokens per request (10% of 1B total supply)</span>
+              <span className="text-xs text-foreground/40">Deployer mints directly to your address — no wallet signature needed</span>
             </div>
 
-            <button
-              onClick={handleDispense}
-              disabled={status === "loading" || !isValid}
-              className="w-full py-4 rounded-2xl bg-purple-500/70 hover:bg-purple-500/90 disabled:opacity-50 text-white font-bold text-sm transition-all flex items-center justify-center gap-2"
-            >
+            <button onClick={handleDispense} disabled={status === "loading" || !canSubmit}
+              className="w-full py-4 rounded-2xl bg-purple-500/70 hover:bg-purple-500/90 disabled:opacity-50 text-white font-bold text-sm transition-all flex items-center justify-center gap-2">
               {status === "loading"
-                ? <><Loader2 size={16} className="animate-spin" /> Requesting...</>
-                : `Request ${amount ? Number(amount).toLocaleString() : "—"} ${token}`}
+                ? <><Loader2 size={16} className="animate-spin" /> Minting...</>
+                : `Mint ${amount ? Number(amount).toLocaleString() : "—"} ${token}`}
             </button>
 
             {status === "success" && (
               <div className="bg-green-500/10 border border-green-500/20 p-5 rounded-2xl flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-green-400 text-xs font-bold uppercase tracking-wider">
-                    <CheckCircle2 size={14} /> Dispensed Successfully
-                  </div>
-                  <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noreferrer"
-                    className="text-[10px] text-green-400 underline uppercase font-bold flex items-center gap-1">
-                    View <ExternalLink size={10} />
-                  </a>
+                <div className="flex items-center gap-2 text-green-400 text-xs font-bold uppercase tracking-wider">
+                  <CheckCircle2 size={14} /> Minted Successfully
                 </div>
-                <div className="text-[10px] text-green-400/40 font-mono truncate">HASH: {txHash}</div>
+                <div className="text-[10px] text-green-400/40 font-mono truncate">TX: {txHash}</div>
               </div>
             )}
 
-            {(status === "error" || errMsg) && (
+            {status === "error" && errMsg && (
               <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-xs text-red-400">
                 {errMsg}
               </div>
@@ -214,16 +188,13 @@ export default function FaucetPage() {
           <div className="bg-[#05080f]/40 border border-border/40 rounded-3xl p-8 backdrop-blur-md space-y-6">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-primary" />
-              <span className="text-xs font-bold uppercase tracking-widest text-foreground/50">Setup Required</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-foreground/50">How It Works</span>
             </div>
             <div className="space-y-2 text-[11px] text-foreground/40 leading-relaxed font-mono">
-              <p>1. Start Hardhat node:</p>
-              <p className="text-primary/70 pl-2">npx hardhat node</p>
-              <p>2. Deploy mock tokens:</p>
-              <p className="text-primary/70 pl-2">npm run deploy:tokens</p>
-              <p>3. Add Hardhat network to MetaMask</p>
-              <p className="text-primary/70 pl-2">RPC: http://127.0.0.1:8545</p>
-              <p className="text-primary/70 pl-2">Chain ID: 31337</p>
+              <p className="text-foreground/60">No MetaMask needed. No gas required.</p>
+              <p>The Hardhat deployer wallet signs the mint transaction directly via RPC and sends tokens to your address.</p>
+              <p className="mt-3">Deployer: <span className="text-primary/60">0xf39Fd6...92266</span></p>
+              <p>RPC: <span className="text-primary/60">http://127.0.0.1:8545</span></p>
             </div>
           </div>
 
