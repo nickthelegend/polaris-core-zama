@@ -4,15 +4,17 @@ import { Search, Globe, Gamepad2, Cpu, Sparkles, Tv, Zap, ArrowRight } from "luc
 import { ConnectGate } from "@/components/connect-gate"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { useQuery } from "convex/react"
-import { api } from "@/convex/_generated/api"
 
 const CATEGORIES = ["ALL", "Gaming", "Technology", "Entertainment", "Fashion", "Travel"]
 
 export default function MerchantsPage() {
-    const merchants = useQuery(api.merchants.listMerchants) ?? []
+    const [merchants, setMerchants] = useState<any[]>([])
+
+    useEffect(() => {
+        fetch("/api/merchants").then(r => r.json()).then(d => setMerchants(Array.isArray(d) ? d : [])).catch(() => {})
+    }, [])
 
     const [search, setSearch] = useState("")
     const [activeTab, setActiveTab] = useState("ALL")

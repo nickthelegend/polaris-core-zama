@@ -1,23 +1,17 @@
 import { NextResponse } from "next/server";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
+import { getDb } from "@/lib/mongodb";
 import { getUserVerifications } from "@/lib/verification-store";
-
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function GET(req: Request) {
   const walletAddress = req.headers.get("x-wallet-address") || "mock-wallet-address";
   const userData = getUserVerifications(walletAddress);
 
   try {
-    const limitData = await convex.query(api.merchants.getUserLimit, {
-      userAddress: walletAddress,
-      asset: "USDC" // Default asset for limit check
-    });
+    const db = await getDb();
+    const limitData = await db.collection("limits").findOne({ userAddress: walletAddress, asset: "USDC" });
 
     const baseLimit = limitData?.currentLimit ?? 250.0;
     const used = limitData?.used ?? 48.5;
-
     const additionalLimit = userData.limitIncrease;
 
     return NextResponse.json({
@@ -33,7 +27,7 @@ export async function GET(req: Request) {
       },
     });
   } catch (e: any) {
-    console.error("Convex Limit Error:", e);
+    console.error("Limits Error:", e);
     return NextResponse.json({ error: "Failed to fetch limits" }, { status: 500 });
   }
 }

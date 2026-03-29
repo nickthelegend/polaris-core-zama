@@ -1,34 +1,40 @@
 import { NextResponse } from "next/server";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
-
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+import { getDb } from "@/lib/mongodb";
 
 export async function POST(req: Request) {
-    const body = await req.json().catch(() => ({}));
-    const { billHash, txHash, userAddress } = body;
+  const body = await req.json().catch(() => ({}));
+  const { billHash, txHash, userAddress } = body;
 
-    if (!billHash || !txHash) {
-        return NextResponse.json({ error: "Required fields: billHash, txHash" }, { status: 400 });
+  if (!billHash || !txHash) {
+    return NextResponse.json({ error: "Required fields: billHash, txHash" }, { status: 400 });
+  }
+
+  try {
+    const db = await getDb();
+    const bill = await db.collection("bills").findOne({ hash: billHash });
+
+    if (!bill) {
+      return NextResponse.json({ error: "Bill not found" }, { status: 404 });
     }
 
-    try {
-        // 1. Update bill status and log transaction on Convex
-        const bill = await convex.mutation(api.merchants.payBill, {
-            billHash,
-            txHash,
-            userAddress: userAddress || "0x..."
-        });
+    await db.collection("bills").updateOne({ hash: billHash }, { $set: { status: "paid" } });
 
-        console.log(`[OBOLUS] Settlement logged for ${bill.appName}`);
+    const app = bill.appId ? await db.collection("apps").findOne({ _id: bill.appId }) : null;
 
-        return NextResponse.json({
-            success: true,
-            message: "Settlement confirmed",
-            bill
-        });
-    } catch (e: any) {
-        console.error("Payment settlement error:", e);
-        return NextResponse.json({ error: "Failed to finalize payment" }, { status: 500 });
-    }
+    await db.collection("transactions").insertOne({
+      userAddress: userAddress || "0x...",
+      title: `Checkout: ${app?.name || "Merchant"}`,
+      amount: bill.amount,
+      asset: bill.asset,
+      category: "spend",
+      status: "completed",
+      txHash,
+      createdAt: new Date(),
+    });
+
+    return NextResponse.json({ success: true, message: "Settlement confirmed", bill: { ...bill, appName: app?.name } });
+  } catch (e: any) {
+    console.error("Payment settlement error:", e);
+    return NextResponse.json({ error: "Failed to finalize payment" }, { status: 500 });
+  }
 }
