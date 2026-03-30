@@ -11,19 +11,34 @@ export async function getZamaInstance() {
   if (!instancePromise) {
     instancePromise = (async () => {
       console.log("[FHEVM] Importing relayer-sdk/web...")
-      const { createInstance, SepoliaConfig, initSDK } = await import("@zama-fhe/relayer-sdk/web")
+      const mod = (await import("@zama-fhe/relayer-sdk/web")) as any
       
-      console.log("[FHEVM] Initializing WASM (initSDK)...")
-      await initSDK()
-      
-      console.log("[FHEVM] WASM ready, creating instance...")
-      // Using public Sepolia RPC as fallback, ideally should come from config
-      const instance = await createInstance({ 
-        ...SepoliaConfig, 
-        network: process.env.NEXT_PUBLIC_NETWORK_URL || "https://ethereum-sepolia-rpc.publicnode.com" 
+      console.log("[FHEVM] relayer-sdk/web imported", {
+        modKeys: Object.keys(mod),
+        defaultKeys: mod.default ? Object.keys(mod.default) : null,
+        hasInitSDK: typeof mod.initSDK === "function",
+        hasDefaultInitSDK: mod.default && typeof mod.default.initSDK === "function"
       })
 
-      
+      // Prioritize named exports as seen in the compiled JS
+      const createInstance = mod.createInstance || mod.default?.createInstance
+      const SepoliaConfig = mod.SepoliaConfig || mod.default?.SepoliaConfig
+      const initSDK = mod.initSDK || mod.default?.initSDK
+
+      if (typeof initSDK !== "function") {
+        throw new TypeError(`initSDK is not a function in @zama-fhe/relayer-sdk/web. Available keys: ${Object.keys(mod).join(", ")}`)
+      }
+
+      console.log("[FHEVM] Initializing WASM (initSDK)...")
+      await initSDK()
+
+      console.log("[FHEVM] WASM ready, creating instance...")
+      // Using public Sepolia RPC as fallback
+      const instance = await createInstance({
+        ...SepoliaConfig,
+        network: process.env.NEXT_PUBLIC_NETWORK_URL || "https://ethereum-sepolia-rpc.publicnode.com"
+      })
+
       console.log("[FHEVM] Instance created successfully")
       return instance
     })()

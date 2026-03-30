@@ -34,6 +34,18 @@ const nextConfig = {
     ],
   },
 
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
+        ],
+      },
+    ];
+  },
+
   webpack: (config) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
@@ -44,14 +56,20 @@ const nextConfig = {
       buffer: require.resolve("buffer"),
     };
 
+    // Required for @zama-fhe/relayer-sdk WASM module (webpack fallback)
+    config.experiments = {
+      ...config.experiments,
+      asyncWebAssembly: true,
+      layers: true,
+    };
+
     // Stub out React Native / non-browser transitive deps that can't be
     // resolved in a web build. These are pulled in by @metamask/sdk (via
-    // RainbowKit), @privy-io/react-auth, and optionally @zama-fhe/relayer-sdk.
+    // RainbowKit), @privy-io/react-auth
     config.resolve.alias = {
       ...config.resolve.alias,
       '@react-native-async-storage/async-storage': false,
       '@farcaster/mini-app-solana': false,
-      '@zama-fhe/relayer-sdk': false,
     };
 
     return config;

@@ -54,6 +54,7 @@
     "@tanstack/react-query": "^5.91.3",
     "@vercel/analytics": "latest",
     "@web3icons/core": "^4.0.48",
+    "@zama-fhe/relayer-sdk": "^0.4.2",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
