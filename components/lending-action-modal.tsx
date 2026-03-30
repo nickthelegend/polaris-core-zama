@@ -157,18 +157,33 @@ export function LendingActionModal({
               <label className="text-[10px] text-foreground/40 uppercase tracking-widest">
                 {isSupply ? "Amount to supply" : "Amount to borrow"}
               </label>
-              {walletBalance !== null && (
-                <span className="text-[10px] text-foreground/40">
-                  Balance: <span className="text-foreground/70 font-mono">{walletBalance} {pool.symbol}</span>
-                </span>
+              {walletBalance === null ? (
+                <span className="text-[10px] text-foreground/30 animate-pulse">Loading balance...</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => maxAmount && setAmount(maxAmount)}
+                  className="text-[10px] text-foreground/40 hover:text-primary transition-colors"
+                >
+                  Balance: <span className="font-mono font-bold text-foreground/70">{walletBalance} {pool.symbol}</span>
+                </button>
               )}
             </div>
             <div className="flex items-center gap-3">
               <input
                 type="number"
                 value={amount}
-                onChange={e => setAmount(e.target.value)}
+                onChange={e => {
+                  const val = e.target.value
+                  // clamp to max balance in supply mode
+                  if (isSupply && maxAmount && parseFloat(val) > parseFloat(maxAmount)) {
+                    setAmount(maxAmount)
+                  } else {
+                    setAmount(val)
+                  }
+                }}
                 placeholder="0"
+                max={isSupply && maxAmount ? maxAmount : undefined}
                 className="flex-1 bg-transparent text-3xl font-light text-foreground/70 placeholder:text-foreground/20 focus:outline-none min-w-0"
               />
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -187,6 +202,12 @@ export function LendingActionModal({
                 </div>
               </div>
             </div>
+            {/* Exceeded balance warning */}
+            {isSupply && amount && maxAmount && parseFloat(amount) > parseFloat(maxAmount) && (
+              <p className="text-[10px] text-red-400 flex items-center gap-1">
+                <AlertCircle size={10} /> Exceeds your balance of {maxAmount} {pool.symbol}
+              </p>
+            )}
             {maxAmount && (
               <div className="flex gap-4 pt-1">
                 <span className="text-[9px] text-foreground/30">
@@ -226,7 +247,7 @@ export function LendingActionModal({
           {/* Submit */}
           <button
             onClick={handleSubmit}
-            disabled={loading || !amount || done}
+            disabled={loading || !amount || done || (isSupply && !!maxAmount && parseFloat(amount) > parseFloat(maxAmount))}
             className={`w-full py-4 rounded-2xl font-bold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${isSupply ? "bg-primary hover:bg-primary/90 text-black" : "bg-red-500/80 hover:bg-red-500 text-white"}`}
           >
             {loading && <Loader2 size={15} className="animate-spin" />}

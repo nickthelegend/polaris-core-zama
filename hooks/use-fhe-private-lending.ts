@@ -114,19 +114,22 @@ export function useFhePrivateLending() {
   });
 
   // Resolve the network ID from the connected wallet's chainId string.
+  // Unknown chains fall back to LOCAL_HARDHAT so the FHE contracts still resolve.
   const getNetworkId = useCallback((): number => {
-    if (!chainId) return NETWORKS.SEPOLIA.id;
+    if (!chainId) return NETWORKS.LOCAL_HARDHAT.id;
     const part = chainId.includes(':') ? chainId.split(':')[1] : chainId;
-    return parseInt(part, 10) || NETWORKS.SEPOLIA.id;
+    const parsed = parseInt(part, 10);
+    // Only return the parsed ID if it's a known network, otherwise use LOCAL_HARDHAT
+    const known = Object.values(NETWORKS).some(n => n.id === parsed);
+    return known ? parsed : NETWORKS.LOCAL_HARDHAT.id;
   }, [chainId]);
 
   // Resolve the right contract addresses for the connected network.
   const getAddresses = useCallback(() => {
     const networkId = getNetworkId();
-    // Local Hardhat node (chainId 31337) uses LOCAL_HARDHAT addresses
-    if (networkId === NETWORKS.LOCAL_HARDHAT.id) return CONTRACTS.LOCAL_HARDHAT;
-    // Default to PRIVATE_LENDING (Sepolia / other networks)
-    return CONTRACTS.PRIVATE_LENDING;
+    if (networkId === NETWORKS.SEPOLIA.id) return CONTRACTS.PRIVATE_LENDING;
+    // Everything else (local Hardhat, unknown chains) uses LOCAL_HARDHAT addresses
+    return CONTRACTS.LOCAL_HARDHAT;
   }, [getNetworkId]);
 
   // ── encryptAmount ──────────────────────────────────────────────────────────

@@ -23,7 +23,7 @@ export const TOKENS: Record<string, TokenConfig> = {
     logo: "/tokens/weth.svg",
     addresses: {
       [SEPOLIA]: "0x35504AceAea50B3dbeF640618b535feDB2db680B",
-      [LOCALHOST]: "0x1291Be112d480055DaFd8a610b7d1e203891C274",
+      [LOCALHOST]: "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82",
     },
   },
   USDC: {
@@ -33,7 +33,7 @@ export const TOKENS: Record<string, TokenConfig> = {
     logo: "/tokens/usdc.svg",
     addresses: {
       [SEPOLIA]: "0xA715e84556b03aBdaC42aa421b5D6081A5434a2F",
-      [LOCALHOST]: "0x5f3f1dBD7B74C6B46e8c44f98792A1dAf8d69154",
+      [LOCALHOST]: "0x9A676e781A523b5d0C0e43731313A708CB607508",
     },
   },
   WBTC: {
@@ -43,7 +43,7 @@ export const TOKENS: Record<string, TokenConfig> = {
     logo: "/tokens/wbtc.svg",
     addresses: {
       [SEPOLIA]: "0x4105F990aBd92f8CCCD8c58433963B862C4b34a5",
-      [LOCALHOST]: "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
+      [LOCALHOST]: "0x0B306BF915C4d645ff596e518fAf3F9669b97016",
     },
   },
   BNB: {
@@ -53,14 +53,17 @@ export const TOKENS: Record<string, TokenConfig> = {
     logo: "/tokens/bnb.svg",
     addresses: {
       [SEPOLIA]: "0xd376252519348D8d219C250E374CE81A1B528BE5",
-      [LOCALHOST]: "0xCD8a1C3ba11CF5ECfa6267617243239504a98d90",
+      [LOCALHOST]: "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1",
     },
   },
 };
 
 /** Get a token's address for the given chainId, or undefined if not configured. */
 export function getTokenAddress(symbol: string, chainId: number): string | undefined {
-  return TOKENS[symbol]?.addresses[chainId];
+  const token = TOKENS[symbol];
+  if (!token) return undefined;
+  // Direct match first, then fall back to localhost addresses for unknown chains
+  return token.addresses[chainId] ?? token.addresses[LOCALHOST];
 }
 
 /** Get all tokens configured for a given chainId. */
