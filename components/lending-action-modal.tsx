@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Loader2, CheckCircle2, Eye, EyeOff, Lock, ShieldCheck, AlertCircle } from "lucide-react"
+import { X, Loader2, CheckCircle2, Eye, EyeOff, Lock, ShieldCheck, AlertCircle, ExternalLink } from "lucide-react"
 import { TokenIcon } from "@/components/token-icon"
 import { useFhePrivateLending } from "@/hooks/use-fhe-private-lending"
 import { usePolaris } from "@/hooks/use-polaris"
@@ -26,7 +26,7 @@ export type PoolInfo = {
 type TxLog = {
   id: number
   step: string
-  detail: string
+  detail: React.ReactNode
   encrypted?: string
   status: "pending" | "done" | "error"
 }
@@ -64,6 +64,13 @@ export function LendingActionModal({
     const part = chainId.includes(':') ? chainId.split(':')[1] : chainId
     return parseInt(part, 10) || NETWORKS.LOCAL_HARDHAT.id
   })()
+
+  // Explorer helper
+  const getExplorerLink = (hash: string) => {
+    const network = Object.values(NETWORKS).find(n => n.id === networkId)
+    const baseUrl = network?.explorer || "https://sepolia.etherscan.io"
+    return `${baseUrl}/tx/${hash}`
+  }
 
   // Fetch wallet balance for the selected token
   useEffect(() => {
@@ -109,7 +116,7 @@ export function LendingActionModal({
       
       updateLog(1, { 
         status: "done", 
-        detail: `${amount} ${pool.symbol} encrypted`, 
+        detail: `${amount} ${pool.symbol} encrypted via Zama FHEVM · 2048-bit CRS`, 
         encrypted: handle 
       })
 
@@ -120,13 +127,28 @@ export function LendingActionModal({
         updateLog(2, { status: "done", detail: `Collateral deposited: ${collalHash.slice(0, 10)}...` })
       }
 
-      // Step 3 — main action
       const fn = isSupply ? "supply" : "borrow"
-      addLog({ id: 3, step: `Calling ${fn}()`, detail: "Sending encrypted tx to PrivateLendingPool...", status: "pending" })
+      addLog({ id: 3, step: `Calling ${fn}()`, detail: "Broadcasting encrypted tx to PrivateLendingPool...", status: "pending" })
       const hash = isSupply ? await supply(wei, pool.symbol) : await borrow(wei, pool.symbol)
       
-      // Sync to Backend
+      updateLog(3, { 
+        status: "done", 
+        detail: (
+          <div className="flex items-center gap-1.5">
+            Confirmed · {hash.slice(0, 12)}...
+            <a 
+              href={getExplorerLink(hash)} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-primary hover:underline hover:text-primary-foreground transition-all"
+            >
+              <ExternalLink size={8} />
+            </a>
+          </div>
+        )
+      })
       if (address) {
+        addLog({ id: 5, step: "Indexing to Ledger", detail: "Updating internal balances and history...", status: "pending" })
         logger.info('LENDING_MODAL', 'Syncing transaction to ledger', { txHash: hash, mode, asset: pool.symbol });
         await syncTransaction({
           userAddress: address,
@@ -145,16 +167,16 @@ export function LendingActionModal({
           entryAmount: isSupply ? parseFloat(amount) : -parseFloat(amount),
           txHash: hash
         });
+      updateLog(5, { status: "done", detail: "Internal ledger updated successfully" })
       }
 
-      updateLog(3, { status: "done", detail: `Confirmed · ${hash.slice(0, 10)}...` })
       logger.info('LENDING_MODAL', 'Action completed successfully', { txHash: hash });
 
       // Step 4 — state
       addLog({
         id: 4,
-        step: "On-chain state updated",
-        detail: `euint64 ${isSupply ? "suppliedAmounts" : "debtAmounts"}[user] updated`,
+        step: "On-Chain Store Updated",
+        detail: `${isSupply ? "suppliedAmounts" : "debtAmounts"}[msg.sender] updated via e-call`,
         encrypted: handle,
         status: "done",
       })
@@ -283,10 +305,18 @@ export function LendingActionModal({
 
           {/* Success */}
           {done && txHash && (
-            <div className="bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 flex items-center gap-2">
-              <CheckCircle2 size={13} className="text-green-400 flex-shrink-0" />
-              <span className="text-[10px] text-green-400 font-mono truncate">TX: {txHash}</span>
-            </div>
+            <a 
+              href={getExplorerLink(txHash)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 flex items-center justify-between group/tx hover:border-green-500/40 transition-all cursor-pointer"
+            >
+              <div className="flex items-center gap-2 overflow-hidden">
+                <CheckCircle2 size={13} className="text-green-400 flex-shrink-0" />
+                <span className="text-[10px] text-green-400 font-mono truncate">TX: {txHash}</span>
+              </div>
+              <ExternalLink size={10} className="text-green-500/40 group-hover/tx:text-green-400 transition-colors" />
+            </a>
           )}
 
           {/* Submit */}
@@ -347,7 +377,7 @@ export function LendingActionModal({
                       "text-foreground/50"
                     }`}>{log.step}</span>
                   </div>
-                  <p className="text-foreground/40 pl-4 leading-relaxed">{log.detail}</p>
+                  <div className="text-foreground/40 pl-4 leading-relaxed">{log.detail}</div>
                   {showEncrypted && log.encrypted && (
                     <div className="pl-4 pt-1 space-y-0.5">
                       <p className="text-[8px] text-primary/40 uppercase tracking-widest">ciphertext</p>

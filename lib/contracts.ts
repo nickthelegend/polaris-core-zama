@@ -133,5 +133,12 @@ export const NETWORKS = {
         rpc: "https://testnet-rpc.monad.xyz/",
         explorer: "https://testnet.monadexplorer.com",
         icon: "ethereum"
+    },
+    LOCAL_HARDHAT: {
+        id: 31337,
+        name: "Hardhat Local",
+        rpc: "http://127.0.0.1:8545",
+        explorer: "https://sepolia.etherscan.io", // Fallback to Sepolia for local
+        icon: "ethereum"
     }
 };
