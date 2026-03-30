@@ -10,6 +10,7 @@ import { ThemeProvider } from "next-themes";
 import { ConvexClientProvider } from "@/components/convex-client-provider";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { Toaster } from "sonner";
 
 const wagmiConfig = getDefaultConfig({
   appName: "Polaris Pay",
@@ -32,6 +33,7 @@ export function Providers({ children }: PropsWithChildren) {
           <WagmiProvider config={wagmiConfig}>
             <RainbowKitProvider theme={darkTheme()}>
               {children}
+              <Toaster position="top-right" theme="dark" />
               <ToastContainer
                 position="top-right"
                 autoClose={5000}

@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import { TokenIcon } from "@/components/token-icon"
 import { useGlobalStats } from "@/hooks/use-global-stats"
+import { AMMSwapWidget } from "@/components/amm-swap-widget"
 
 const BORROW_ASSETS = [
   { symbol: "USDC", color: "bg-blue-500" },
@@ -162,34 +163,7 @@ function PrivateActionWidget() {
             <button className="w-full py-4 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm transition-all">Submit Lend Intent</button>
           </>
         )}
-        {tab === "Swap" && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-lg font-bold text-white">Private Swap</h3>
-              <p className="text-xs text-foreground/40 mt-1">Swap assets with encrypted amounts.</p>
-            </div>
-            <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-4 space-y-2">
-              <label className="text-xs text-foreground/40">From</label>
-              <div className="flex items-center gap-3">
-                <input type="number" placeholder="0" className="flex-1 bg-transparent text-3xl font-light text-foreground/60 placeholder:text-foreground/20 focus:outline-none min-w-0" />
-                <TokenDropdown options={BORROW_ASSETS} value="USDC" onChange={() => {}} />
-              </div>
-            </div>
-            <div className="flex justify-center">
-              <div className="p-2 rounded-full bg-[#1a1d24] border border-border/30 hover:border-primary/40 transition-colors cursor-pointer">
-                <ArrowLeftRight size={16} className="text-foreground/40" />
-              </div>
-            </div>
-            <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-4 space-y-2">
-              <label className="text-xs text-foreground/40">To</label>
-              <div className="flex items-center gap-3">
-                <input type="number" placeholder="0" className="flex-1 bg-transparent text-3xl font-light text-foreground/60 placeholder:text-foreground/20 focus:outline-none min-w-0" />
-                <TokenDropdown options={COLLATERAL_ASSETS} value="WETH" onChange={() => {}} />
-              </div>
-            </div>
-            <button className="w-full py-4 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm transition-all">Swap</button>
-          </div>
-        )}
+        {tab === "Swap" && <AMMSwapWidget />}
       </div>
     </div>
   )

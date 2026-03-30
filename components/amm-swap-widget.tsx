@@ -1,0 +1,285 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { ArrowLeftRight, Info, Loader2 } from "lucide-react"
+import { TokenIcon } from "@/components/token-icon"
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi"
+import { parseUnits, formatUnits } from "viem"
+import { toast } from "sonner"
+import { AMM_DEPLOYMENTS, ERC20_ABI, AMM_ABI } from "@/lib/amm-contracts"
+
+const TOKENS = [
+  { symbol: "WETH", address: AMM_DEPLOYMENTS.mockTokens.WETH, decimals: 18, color: "bg-blue-400" },
+  { symbol: "BNB", address: AMM_DEPLOYMENTS.mockTokens.BNB, decimals: 18, color: "bg-yellow-500" },
+  { symbol: "USDC", address: AMM_DEPLOYMENTS.mockTokens.USDC, decimals: 6, color: "bg-blue-500" },
+  { symbol: "USDT", address: AMM_DEPLOYMENTS.mockTokens.USDT, decimals: 6, color: "bg-green-600" },
+]
+
+export function AMMSwapWidget() {
+  const { address, isConnected } = useAccount()
+  const [fromToken, setFromToken] = useState(TOKENS[0]) // BNB
+  const [toToken, setToToken] = useState(TOKENS[1]) // USDC
+  const [fromAmount, setFromAmount] = useState("")
+  const [toAmount, setToAmount] = useState("")
+  const [isApproving, setIsApproving] = useState(false)
+  const [isSwapping, setIsSwapping] = useState(false)
+
+  // Get AMM pool address based on token pair
+  const getPoolAddress = () => {
+    const pair = [fromToken.symbol, toToken.symbol].sort().join("-")
+    
+    if (pair === "BNB-USDC") return AMM_DEPLOYMENTS.ammPools.BNB_USDC
+    if (pair === "BNB-USDT") return AMM_DEPLOYMENTS.ammPools.BNB_USDT
+    if (pair === "USDC-WETH") return AMM_DEPLOYMENTS.ammPools.WETH_USDC
+    if (pair === "USDT-WETH") return AMM_DEPLOYMENTS.ammPools.WETH_USDT
+    
+    return null
+  }
+
+  const poolAddress = getPoolAddress()
+
+  // Read token balance
+  const { data: balance } = useReadContract({
+    address: fromToken.address as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: { enabled: !!address }
+  })
+
+  // Read allowance
+  const { data: allowance } = useReadContract({
+    address: fromToken.address as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "allowance",
+    args: address && poolAddress ? [address, poolAddress as `0x${string}`] : undefined,
+    query: { enabled: !!address && !!poolAddress }
+  })
+
+  // Get expected output amount
+  const { data: expectedOutput, refetch: refetchOutput } = useReadContract({
+    address: poolAddress as `0x${string}`,
+    abi: AMM_ABI,
+    functionName: "getAmountOut",
+    args: fromAmount && poolAddress ? [
+      fromToken.address as `0x${string}`,
+      parseUnits(fromAmount, fromToken.decimals)
+    ] : undefined,
+    query: { enabled: !!fromAmount && !!poolAddress && parseFloat(fromAmount) > 0 }
+  })
+
+  // Update toAmount when expectedOutput changes
+  useEffect(() => {
+    if (expectedOutput) {
+      setToAmount(formatUnits(expectedOutput, toToken.decimals))
+    } else {
+      setToAmount("")
+    }
+  }, [expectedOutput, toToken.decimals])
+
+  // Refetch output when fromAmount changes
+  useEffect(() => {
+    if (fromAmount && parseFloat(fromAmount) > 0) {
+      refetchOutput()
+    }
+  }, [fromAmount, refetchOutput])
+
+  const { writeContract: approveToken, data: approveHash } = useWriteContract()
+  const { writeContract: executeSwap, data: swapHash } = useWriteContract()
+
+  const { isLoading: isApproveConfirming } = useWaitForTransactionReceipt({
+    hash: approveHash,
+  })
+
+  const { isLoading: isSwapConfirming } = useWaitForTransactionReceipt({
+    hash: swapHash,
+  })
+
+  const handleApprove = async () => {
+    if (!poolAddress || !fromAmount) return
+    
+    setIsApproving(true)
+    try {
+      const amount = parseUnits(fromAmount, fromToken.decimals)
+      approveToken({
+        address: fromToken.address as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: "approve",
+        args: [poolAddress as `0x${string}`, amount],
+      })
+      toast.success("Approval submitted!")
+    } catch (error: any) {
+      console.error("Approve error:", error)
+      toast.error(error?.message || "Approval failed")
+    } finally {
+      setIsApproving(false)
+    }
+  }
+
+  const handleSwap = async () => {
+    if (!poolAddress || !fromAmount) return
+    
+    setIsSwapping(true)
+    try {
+      const amount = parseUnits(fromAmount, fromToken.decimals)
+      executeSwap({
+        address: poolAddress as `0x${string}`,
+        abi: AMM_ABI,
+        functionName: "swap",
+        args: [fromToken.address as `0x${string}`, amount],
+      })
+      toast.success("Swap submitted!")
+    } catch (error: any) {
+      console.error("Swap error:", error)
+      toast.error(error?.message || "Swap failed")
+    } finally {
+      setIsSwapping(false)
+    }
+  }
+
+  const handleFlipTokens = () => {
+    setFromToken(toToken)
+    setToToken(fromToken)
+    setFromAmount(toAmount)
+    setToAmount("")
+  }
+
+  const needsApproval = allowance !== undefined && fromAmount && 
+    parseUnits(fromAmount, fromToken.decimals) > allowance
+
+  const canSwap = isConnected && fromAmount && parseFloat(fromAmount) > 0 && 
+    poolAddress && !needsApproval && balance !== undefined &&
+    parseUnits(fromAmount, fromToken.decimals) <= balance
+
+  const priceImpact = expectedOutput && fromAmount && parseFloat(fromAmount) > 0
+    ? ((parseFloat(toAmount) / parseFloat(fromAmount)) * 100).toFixed(2)
+    : "0.00"
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-bold text-white">AMM Swap</h3>
+        <p className="text-xs text-foreground/40 mt-1">
+          Swap tokens using our AMM pools with 0.3% fee
+        </p>
+      </div>
+
+      {/* From Token */}
+      <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-4 space-y-2">
+        <div className="flex justify-between items-center">
+          <label className="text-xs text-foreground/40">From</label>
+          {balance !== undefined && (
+            <span className="text-xs text-foreground/30">
+              Balance: {formatUnits(balance, fromToken.decimals)}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <input
+            type="number"
+            value={fromAmount}
+            onChange={(e) => setFromAmount(e.target.value)}
+            placeholder="0"
+            className="flex-1 bg-transparent text-3xl font-light text-foreground/60 placeholder:text-foreground/20 focus:outline-none min-w-0"
+          />
+          <div className="flex items-center gap-2 bg-[#1a1d24] border border-border/40 rounded-xl px-3 py-2.5">
+            <TokenIcon symbol={fromToken.symbol} size={20} />
+            <span className="text-sm font-semibold text-white">{fromToken.symbol}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Flip Button */}
+      <div className="flex justify-center">
+        <button
+          onClick={handleFlipTokens}
+          className="p-2 rounded-full bg-[#1a1d24] border border-border/30 hover:border-primary/40 transition-colors cursor-pointer"
+        >
+          <ArrowLeftRight size={16} className="text-foreground/40" />
+        </button>
+      </div>
+
+      {/* To Token */}
+      <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-4 space-y-2">
+        <label className="text-xs text-foreground/40">To (estimated)</label>
+        <div className="flex items-center gap-3">
+          <input
+            type="number"
+            value={toAmount}
+            readOnly
+            placeholder="0"
+            className="flex-1 bg-transparent text-3xl font-light text-foreground/60 placeholder:text-foreground/20 focus:outline-none min-w-0"
+          />
+          <div className="flex items-center gap-2 bg-[#1a1d24] border border-border/40 rounded-xl px-3 py-2.5">
+            <TokenIcon symbol={toToken.symbol} size={20} />
+            <span className="text-sm font-semibold text-white">{toToken.symbol}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Swap Info */}
+      {fromAmount && toAmount && (
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs">
+            <span className="text-foreground/40">Rate</span>
+            <span className="text-foreground/70">
+              1 {fromToken.symbol} = {(parseFloat(toAmount) / parseFloat(fromAmount)).toFixed(4)} {toToken.symbol}
+            </span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-foreground/40">Fee (0.3%)</span>
+            <span className="text-foreground/70">
+              {(parseFloat(fromAmount) * 0.003).toFixed(6)} {fromToken.symbol}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Warning if pool not available */}
+      {!poolAddress && (
+        <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-3">
+          <Info size={14} className="text-yellow-500 flex-shrink-0" />
+          <span className="text-xs text-yellow-500">
+            No pool available for this token pair
+          </span>
+        </div>
+      )}
+
+      {/* Info Box */}
+      <div className="flex items-center gap-2 bg-[#05080f]/40 border border-border/20 rounded-xl px-4 py-3">
+        <Info size={14} className="text-foreground/30 flex-shrink-0" />
+        <span className="text-xs text-foreground/40">
+          Swaps are executed on-chain via AMM pools
+        </span>
+      </div>
+
+      {/* Action Buttons */}
+      {!isConnected ? (
+        <button
+          disabled
+          className="w-full py-4 rounded-2xl bg-foreground/10 text-foreground/40 font-bold text-sm"
+        >
+          Connect Wallet to Swap
+        </button>
+      ) : needsApproval ? (
+        <button
+          onClick={handleApprove}
+          disabled={isApproving || isApproveConfirming}
+          className="w-full py-4 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {(isApproving || isApproveConfirming) && <Loader2 size={16} className="animate-spin" />}
+          {isApproveConfirming ? "Confirming..." : isApproving ? "Approving..." : `Approve ${fromToken.symbol}`}
+        </button>
+      ) : (
+        <button
+          onClick={handleSwap}
+          disabled={!canSwap || isSwapping || isSwapConfirming}
+          className="w-full py-4 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {(isSwapping || isSwapConfirming) && <Loader2 size={16} className="animate-spin" />}
+          {isSwapConfirming ? "Confirming..." : isSwapping ? "Swapping..." : "Swap"}
+        </button>
+      )}
+    </div>
+  )
+}
