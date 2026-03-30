@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { ethers, BrowserProvider, JsonRpcProvider, Contract, parseUnits, formatUnits } from 'ethers';
 import { usePolarisWallet } from "@/lib/hooks/usePolarisWallet"
 import { CONTRACTS, ABIS, NETWORKS } from '@/lib/contracts';
+import { logger } from '@/lib/logger';
+import { parseRevertReason } from '@/lib/revert-mapper';
 
 export function usePolarisPay() {
     const { connected: authenticated, address: walletAddress, networkId: walletNetworkId } = usePolarisWallet();
@@ -23,7 +25,7 @@ export function usePolarisPay() {
                         params: [{ chainId: `0x${id.toString(16)}` }],
                     });
                 } catch (e) {
-                    console.error("Failed to switch EVM chain", e);
+                    logger.error('POLARIS_PAY', "Failed to switch EVM chain", { error: e, targetChainId: id });
                 }
             }
         },
@@ -48,7 +50,7 @@ export function usePolarisPay() {
         const chainIdStr = wallet?.chainId?.toString() || '';
         const isLocal = chainIdStr.includes('1337') || chainIdStr === '0x539' || chainIdStr === '539';
 
-        console.log(`[POLARIS_DEBUG] Chain: ${chainIdStr}, isLocal: ${isLocal}`);
+        logger.debug('POLARIS_PAY', `Chain: ${chainIdStr}, isLocal: ${isLocal}`);
 
         return isLocal
             ? { config: CONTRACTS.SPOKES.GANACHE, id: NETWORKS.GANACHE.id }
@@ -68,7 +70,7 @@ export function usePolarisPay() {
             const currentChainId = parseInt(chainIdPart);
 
             if (currentChainId !== networkId) {
-                console.log(`[POLARIS] Switching from ${currentChainId} to ${networkId}...`);
+                logger.info('POLARIS_PAY', `Switching chain ${currentChainId} -> ${networkId}`);
                 await wallet.switchChain(networkId);
             }
             const provider = new BrowserProvider(await wallet.getEthereumProvider());
@@ -106,14 +108,14 @@ export function usePolarisPay() {
                         networkId === NETWORKS.CRONOS.id ||
                         networkId === NETWORKS.GANACHE.id;
                     if (isTestnet) {
-                        console.log(`[POLARIS] Insufficient balance(${formatUnits(balance, decimals)}).Auto - minting...`);
+                        logger.info('POLARIS_PAY', `Insufficient balance(${formatUnits(balance, decimals)}). Auto-minting...`, { address: wallet.address, networkId });
                         try {
                             const mintAmount = amountWei * BigInt(10);
                             const mintTx = await token.mint(wallet.address, mintAmount);
                             await mintTx.wait();
-                            console.log("[POLARIS] Auto-mint successful.");
+                            logger.info('POLARIS_PAY', "Auto-mint successful.");
                         } catch (mintErr) {
-                            console.error("Auto-mint failed", mintErr);
+                            logger.error('POLARIS_PAY', "Auto-mint failed", { error: mintErr });
                             throw new Error("Insufficient balance and faucet failed.");
                         }
                     } else {
@@ -122,19 +124,20 @@ export function usePolarisPay() {
                 }
             }
 
-            console.log(`[POLARIS] Approving token on chain ${networkId}...`);
+            logger.info('POLARIS_PAY', `Approving token on chain ${networkId}...`, { tokenAddress, vault: config.LIQUIDITY_VAULT });
             const approveTx = await token.approve(config.LIQUIDITY_VAULT, amountWei);
             await approveTx.wait();
 
-            console.log(`[POLARIS] Depositing into vault on chain ${networkId}...`);
+            logger.info('POLARIS_PAY', `Depositing into vault on chain ${networkId}...`, { tokenAddress });
             const depositTx = await vault.deposit(tokenAddress, amountWei);
             const receipt = await depositTx.wait();
 
             setTxHash(receipt.hash);
             return receipt;
         } catch (error) {
-            console.error("Deposit failed:", error);
-            throw error;
+            const friendlyError = parseRevertReason(error);
+            logger.error('POLARIS_PAY', "Deposit failed", { error, friendlyError, tokenAddress });
+            throw new Error(friendlyError);
         } finally {
             setLoading(false);
         }
@@ -150,17 +153,18 @@ export function usePolarisPay() {
         continuityRoots: string[];
     }) => {
         setLoading(true);
+        const module = 'POLARIS_SYNC';
         try {
-            console.log(`[POLARIS] 🚀 FINALIZING_SYNC: Starting proof submission for block ${proof.blockHeight} on chain ${proof.chainKey} `);
+            logger.info(module, `Starting proof submission for block ${proof.blockHeight} on chain ${proof.chainKey}`);
 
             const { config, id } = getMasterConfig();
             const poolManager = await getContract(config.POOL_MANAGER, ABIS.PoolManager, id);
 
             const continuityBlocks = proof.continuityRoots?.length || 1;
             const calculatedGas = 100000 + (continuityBlocks * 10000) + 100000;
-            console.log(`[POLARIS] ⏳ Calculated Gas Limit: ${calculatedGas} for ${continuityBlocks} continuity blocks.`);
+            logger.info(module, `Calculated Gas Limit: ${calculatedGas} for ${continuityBlocks} continuity blocks.`);
 
-            console.log("[POLARIS] 🔍 Running Pre-Flight staticCall verification...");
+            logger.info(module, "Running Pre-Flight staticCall verification...");
             try {
                 await poolManager.addLiquidityFromProof.staticCall(
                     proof.chainKey,
@@ -171,19 +175,19 @@ export function usePolarisPay() {
                     proof.lowerEndpointDigest,
                     proof.continuityRoots
                 );
-                console.log("[POLARIS] ✅ Pre-Flight Passed.");
+                logger.info(module, "Pre-Flight Passed.");
             } catch (staticError: any) {
                 const reason = staticError.reason || staticError.message || "";
-                console.warn("[POLARIS] ⚠️ Pre-Flight Verification Failed:", reason);
+                logger.warn(module, "Pre-Flight Verification Failed", { reason });
 
                 if (reason.includes("already processed") || reason.includes("replay")) {
-                    console.info("[POLARIS] Sync already completed previously.");
+                    logger.info(module, "Sync already completed previously.");
                     setTxHash("ALREADY_SYNCED");
                     return { hash: "ALREADY_SYNCED", status: 1 };
                 }
 
                 if (reason.includes("Continuity proof") || reason.includes("checkpoint") || reason.includes("match attestation")) {
-                    console.warn("[POLARIS] ⏳ Hub Oracle Delay: Continuity roots not yet pushing to state.");
+                    logger.warn(module, "Hub Oracle Delay: Continuity roots not yet pushing to state.");
                     throw new Error("HUB_NOT_SYNCED");
                 }
 
@@ -206,23 +210,24 @@ export function usePolarisPay() {
                 { gasLimit: calculatedGas }
             );
 
-            console.log(`[POLARIS] 🛰️ Transaction Broadcasted: ${tx.hash} `);
+            logger.info(module, `Transaction Broadcasted: ${tx.hash}`);
             const receipt = await tx.wait();
 
             if (!receipt || receipt.status === 0) {
                 throw new Error("TRANSACTION_FAILED: The transaction was mined but reverted.");
             }
 
-            console.log(`[POLARIS] 🏁 Sync Successful! Hub Tx: ${receipt.hash} `);
+            logger.info(module, `Sync Successful! Hub Tx: ${receipt.hash}`);
             setTxHash(receipt.hash);
             return receipt;
 
         } catch (error: any) {
-            console.error("[POLARIS] ❌ FinalizeSync Failed:", error);
-            if (error.message === "HUB_NOT_SYNCED") {
+            const friendlyError = parseRevertReason(error);
+            logger.error(module, "FinalizeSync Failed", { error, friendlyError });
+            if (friendlyError.includes("HUB_NOT_SYNCED") || error.message === "HUB_NOT_SYNCED") {
                 throw new Error("The Hub hasn't registered this block's continuity roots yet. Please wait 2-3 minutes for the Oracle and try again.");
             }
-            throw error;
+            throw new Error(friendlyError);
         } finally {
             setLoading(false);
         }
@@ -240,7 +245,7 @@ export function usePolarisPay() {
 
             return formatUnits(liquidity, decimals);
         } catch (error) {
-            console.error("Fetch liquidity failed:", error);
+            logger.error('POLARIS_READ', "Fetch liquidity failed", { error, tokenAddress });
             return "0";
         }
     }, [getMasterConfig, getContract]);
@@ -256,7 +261,7 @@ export function usePolarisPay() {
 
             return formatUnits(balance, decimals);
         } catch (error) {
-            console.error("Fetch balance failed:", error);
+            logger.error('POLARIS_READ', "Fetch balance failed", { error, tokenAddress });
             return "0";
         }
     }, [wallet?.address, getContract]);
@@ -274,7 +279,7 @@ export function usePolarisPay() {
 
             return formatUnits(balance, decimals);
         } catch (error) {
-            console.error("Fetch LP balance failed:", error);
+            logger.error('POLARIS_READ', "Fetch LP balance failed", { error, tokenAddress });
             return "0";
         }
     }, [wallet?.address, getMasterConfig, getContract]);
@@ -287,7 +292,7 @@ export function usePolarisPay() {
             const total = await poolManager.getUserTotalCollateral(wallet.address);
             return formatUnits(total, 18);
         } catch (error) {
-            console.error("Fetch total collateral failed:", error);
+            logger.error('POLARIS_READ', "Fetch total collateral failed", { error });
             return "0";
         }
     }, [wallet?.address, getMasterConfig, getContract]);
@@ -320,7 +325,7 @@ export function usePolarisPay() {
             }
             return totalUSD.toString();
         } catch (error) {
-            console.error("Fetch total TVL failed:", error);
+            logger.error('POLARIS_READ', "Fetch total TVL failed", { error });
             return "0";
         }
     }, [getMasterConfig, getContract]);
@@ -336,7 +341,7 @@ export function usePolarisPay() {
 
             return formatUnits(balance, decimals);
         } catch (error) {
-            console.error("Fetch physical vault balance failed:", error);
+            logger.error('POLARIS_READ', "Fetch physical vault balance failed", { error, tokenAddress });
             return "0";
         }
     }, [getSpokeConfig, getContract]);
@@ -350,7 +355,7 @@ export function usePolarisPay() {
             const scoreNum = Number(score);
             return scoreNum === 0 ? "300" : scoreNum.toString();
         } catch (error) {
-            console.error("Fetch score failed:", error);
+            logger.error('POLARIS_READ', "Fetch score failed", { error });
             return "300";
         }
     }, [wallet?.address, getMasterConfig, getContract]);
@@ -376,7 +381,7 @@ export function usePolarisPay() {
 
             return limitVal.toString();
         } catch (error) {
-            console.error("Fetch credit limit failed:", error);
+            logger.error('POLARIS_READ', "Fetch credit limit failed", { error });
             return "0";
         }
     }, [wallet?.address, getMasterConfig, getContract, getUserTotalCollateral]);
@@ -398,8 +403,9 @@ export function usePolarisPay() {
             setTxHash(receipt.hash);
             return receipt;
         } catch (error) {
-            console.error("Create loan failed:", error);
-            throw error;
+            const friendlyError = parseRevertReason(error);
+            logger.error('POLARIS_LENDING', "Create loan failed", { error, friendlyError, amount, tokenAddress });
+            throw new Error(friendlyError);
         } finally {
             setLoading(false);
         }
@@ -425,8 +431,9 @@ export function usePolarisPay() {
             setTxHash(receipt.hash);
             return receipt;
         } catch (error) {
-            console.error("Repay loan failed:", error);
-            throw error;
+            const friendlyError = parseRevertReason(error);
+            logger.error('POLARIS_LENDING', "Repay loan failed", { error, friendlyError, loanId, amount });
+            throw new Error(friendlyError);
         } finally {
             setLoading(false);
         }
@@ -457,7 +464,7 @@ export function usePolarisPay() {
             }
             return loans;
         } catch (error) {
-            console.error("Fetch loans failed:", error);
+            logger.error('POLARIS_READ', "Fetch loans failed", { error });
             return [];
         }
     }, [wallet?.address, getMasterConfig, getContract]);
@@ -474,8 +481,9 @@ export function usePolarisPay() {
             setTxHash(receipt.hash);
             return receipt;
         } catch (error) {
-            console.error("Withdrawal request failed:", error);
-            throw error;
+            const friendlyError = parseRevertReason(error);
+            logger.error('POLARIS_SETTLEMENT', "Withdrawal request failed", { error, friendlyError, tokenAddress, amount });
+            throw new Error(friendlyError);
         } finally {
             setLoading(false);
         }
@@ -493,14 +501,15 @@ export function usePolarisPay() {
 
             const amountWei = parseUnits(amount, decimals);
 
-            console.log(`[POLARIS] Paying merchant ${merchantAddress} via Hub...`);
+            logger.info('POLARIS_PAY', `Paying merchant ${merchantAddress} via Hub...`, { amount, tokenAddress });
             const tx = await router.payWithCredit(merchantAddress, tokenAddress, amountWei, { gasLimit: 1000000 });
             const receipt = await tx.wait();
             setTxHash(receipt.hash);
             return receipt;
         } catch (error) {
-            console.error("Payment failed:", error);
-            throw error;
+            const friendlyError = parseRevertReason(error);
+            logger.error('POLARIS_PAY', "Payment failed", { error, friendlyError, merchantAddress, amount });
+            throw new Error(friendlyError);
         } finally {
             setLoading(false);
         }
@@ -521,13 +530,14 @@ export function usePolarisPay() {
 
             const amountWei = parseUnits(amount, decimals);
 
-            console.log(`[POLARIS] Minting tokens on chain ${networkId}...`);
+            logger.info('POLARIS_PAY', `Minting tokens on chain ${networkId}...`, { tokenAddress, amount });
             const tx = await token.mint(wallet?.address, amountWei);
             const receipt = await tx.wait();
             return receipt;
         } catch (error) {
-            console.error("Mint failed:", error);
-            throw error;
+            const friendlyError = parseRevertReason(error);
+            logger.error('POLARIS_PAY', "Mint failed", { error, friendlyError, tokenAddress, amount });
+            throw new Error(friendlyError);
         } finally {
             setLoading(false);
         }
@@ -570,7 +580,7 @@ export function usePolarisPay() {
             const receipt = await tx.wait();
             return receipt;
         } catch (error) {
-            console.error("Profile update failed:", error);
+            logger.error('POLARIS_PAY', "Profile update failed", { error });
             throw error;
         } finally {
             setLoading(false);
@@ -586,7 +596,7 @@ export function usePolarisPay() {
             return formatUnits(value, 18);
         } catch (error: any) {
             if (error.code === 'BAD_DATA') return "0";
-            console.error("Fetch external net value failed:", error);
+            logger.error('POLARIS_READ', "Fetch external net value failed", { error });
             return "0";
         }
     }, [wallet?.address, getMasterConfig, getContract]);

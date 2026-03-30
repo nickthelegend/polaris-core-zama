@@ -10,6 +10,9 @@ import { AMM_DEPLOYMENTS, ERC20_ABI, AMM_ABI } from "@/lib/amm-contracts"
 import { useFhePrivateSwap } from "@/hooks/use-fhe-private-swap"
 import { CONTRACTS } from "@/lib/contracts"
 import { syncTransaction, syncPosition } from "@/lib/sync-utils"
+import { logger } from "@/lib/logger"
+import { parseRevertReason } from "@/lib/revert-mapper"
+import { cn } from "@/lib/utils"
 import { Shield, ShieldOff, Lock } from "lucide-react"
 
 const TOKENS = [
@@ -104,6 +107,7 @@ export function AMMSwapWidget() {
 
   useEffect(() => {
     if (swapHash && address) {
+      logger.info('AMM_SWAP', 'Syncing public swap to ledger', { txHash: swapHash, from: fromToken.symbol, to: toToken.symbol });
       syncTransaction({
         userAddress: address,
         type: "swap",
@@ -135,10 +139,12 @@ export function AMMSwapWidget() {
         functionName: "approve",
         args: [poolAddress as `0x${string}`, amount],
       } as any)
+      logger.info('AMM_SWAP', 'Approval transaction submitted', { token: fromToken.symbol, amount: fromAmount });
       toast.success("Approval submitted!")
     } catch (error: any) {
-      console.error("Approve error:", error)
-      toast.error(error?.message || "Approval failed")
+      const msg = parseRevertReason(error)
+      logger.error('AMM_SWAP', 'Approval failed', { error, msg });
+      toast.error(msg)
     } finally {
       setIsApproving(false)
     }
@@ -158,11 +164,12 @@ export function AMMSwapWidget() {
           return
         }
 
+        logger.info('AMM_SWAP', 'Initiating confidential swap', { swapContract, from: fromToken.symbol, to: toToken.symbol });
         const hash = await swapEncrypted(swapContract, amountWei, toToken.address)
         toast.success("Confidential Swap submitted!")
-        console.log("FHE Swap Hash:", hash)
 
         if (address) {
+          logger.info('AMM_SWAP', 'Syncing confidential swap to ledger', { txHash: hash });
           await syncTransaction({
             userAddress: address,
             type: "swap",
@@ -182,8 +189,9 @@ export function AMMSwapWidget() {
           });
         }
       } catch (error: any) {
-        console.error("FHE Swap error:", error)
-        toast.error(error?.message || "Confidential swap failed")
+        const msg = parseRevertReason(error)
+        logger.error('AMM_SWAP', 'Confidential swap failed', { error, msg });
+        toast.error(msg)
       } finally {
         setIsSwapping(false)
       }
@@ -199,10 +207,12 @@ export function AMMSwapWidget() {
         functionName: "swap",
         args: [fromToken.address as `0x${string}`, amount],
       } as any)
+      logger.info('AMM_SWAP', 'Public swap submitted', { from: fromToken.symbol, to: toToken.symbol, amount: fromAmount });
       toast.success("Swap submitted!")
     } catch (error: any) {
-      console.error("Swap error:", error)
-      toast.error(error?.message || "Swap failed")
+      const msg = parseRevertReason(error)
+      logger.error('AMM_SWAP', 'Public swap failed', { error, msg });
+      toast.error(msg)
     } finally {
       setIsSwapping(false)
     }
@@ -255,11 +265,11 @@ export function AMMSwapWidget() {
       </div>
 
       {/* From Token */}
-      <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-4 space-y-2">
+      <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-4 space-y-2 group focus-within:border-primary/40 transition-all">
         <div className="flex justify-between items-center">
-          <label className="text-xs text-foreground/40">From</label>
+          <label className="text-[10px] text-foreground/40 font-black uppercase tracking-widest">From_Source</label>
           {balance !== undefined && (
-            <span className="text-xs text-foreground/30">
+            <span className="text-[10px] text-foreground/30 font-black uppercase tracking-widest">
               Balance: {formatUnits(balance, fromToken.decimals)}
             </span>
           )}
@@ -272,9 +282,9 @@ export function AMMSwapWidget() {
             placeholder="0"
             className="flex-1 bg-transparent text-3xl font-light text-foreground/60 placeholder:text-foreground/20 focus:outline-none min-w-0"
           />
-          <div className="flex items-center gap-2 bg-[#1a1d24] border border-border/40 rounded-xl px-3 py-2.5">
+          <div className="flex items-center gap-2 bg-[#1a1d24] border border-border/40 rounded-xl px-3 py-2.5 shadow-sm">
             <TokenIcon symbol={fromToken.symbol} size={20} />
-            <span className="text-sm font-semibold text-white">{fromToken.symbol}</span>
+            <span className="text-sm font-black text-white">{fromToken.symbol}</span>
           </div>
         </div>
       </div>
@@ -291,18 +301,18 @@ export function AMMSwapWidget() {
 
       {/* To Token */}
       <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-4 space-y-2">
-        <label className="text-xs text-foreground/40">To (estimated)</label>
+        <label className="text-[10px] text-foreground/40 font-black uppercase tracking-widest text-primary/60 animate-pulse">To_Destination (est)</label>
         <div className="flex items-center gap-3">
           <input
             type="number"
             value={toAmount}
             readOnly
             placeholder="0"
-            className="flex-1 bg-transparent text-3xl font-light text-foreground/60 placeholder:text-foreground/20 focus:outline-none min-w-0"
+            className="flex-1 bg-transparent text-3xl font-light text-primary/40 placeholder:text-foreground/20 focus:outline-none min-w-0"
           />
           <div className="flex items-center gap-2 bg-[#1a1d24] border border-border/40 rounded-xl px-3 py-2.5">
             <TokenIcon symbol={toToken.symbol} size={20} />
-            <span className="text-sm font-semibold text-white">{toToken.symbol}</span>
+            <span className="text-sm font-black text-white">{toToken.symbol}</span>
           </div>
         </div>
       </div>
@@ -349,27 +359,32 @@ export function AMMSwapWidget() {
       {!isConnected ? (
         <button
           disabled
-          className="w-full py-4 rounded-2xl bg-foreground/10 text-foreground/40 font-bold text-sm"
+          className="w-full py-4 rounded-2xl bg-foreground/10 text-foreground/40 font-black text-sm uppercase tracking-widest"
         >
-          Connect Wallet to Swap
+          Connect_Wallet_Interface
         </button>
       ) : needsApproval ? (
         <button
           onClick={handleApprove}
           disabled={isApproving || isApproveConfirming}
-          className="w-full py-4 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full py-4 rounded-2xl bg-primary hover:bg-primary/90 text-black font-black text-sm uppercase tracking-tighter transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(166,242,74,0.2)] hover:scale-[1.02] active:scale-[0.98]"
         >
           {(isApproving || isApproveConfirming) && <Loader2 size={16} className="animate-spin" />}
-          {isApproveConfirming ? "Confirming..." : isApproving ? "Approving..." : `Approve ${fromToken.symbol}`}
+          {isApproveConfirming ? "Confirming_Protocol..." : isApproving ? "Authorizing..." : `Approve_${fromToken.symbol}`}
         </button>
       ) : (
         <button
           onClick={handleSwap}
           disabled={!canSwap || isSwapping || isSwapConfirming || isFheLoading}
-          className="w-full py-4 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className={cn(
+            "w-full py-4 rounded-2xl font-black text-sm uppercase tracking-tighter transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]",
+            isConfidential 
+              ? "bg-primary text-black shadow-[0_0_20px_rgba(166,242,74,0.3)]" 
+              : "bg-white/10 text-white border border-white/10 hover:bg-white/20"
+          )}
         >
           {(isSwapping || isSwapConfirming || isFheLoading) && <Loader2 size={16} className="animate-spin" />}
-          {isSwapConfirming ? "Confirming..." : (isSwapping || isFheLoading) ? "Processing..." : isConfidential ? "Confidential Swap" : "Swap"}
+          {isSwapConfirming ? "Verifying_Proof..." : (isSwapping || isFheLoading) ? "Calculating_FHE..." : isConfidential ? "Confidential_Swap" : "Public_Swap"}
         </button>
       )}
     </div>

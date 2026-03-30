@@ -4,6 +4,8 @@ import { usePolaris } from '@/hooks/use-polaris';
 import { CONTRACTS, ABIS, NETWORKS } from '@/lib/contracts';
 
 import { getZamaInstance, encrypt64 } from '@/lib/fhevm';
+import { logger } from '@/lib/logger';
+import { parseRevertReason } from '@/lib/revert-mapper';
 
 // ─── State shape ────────────────────────────────────────────────────────────
 
@@ -92,7 +94,7 @@ export function useFhePrivateLending() {
         );
         return result;
       } catch (err) {
-        console.error('[FHE] userDecrypt failed:', err);
+        logger.error('FHE_PRIVATE_LENDING', 'userDecrypt failed', { error: err, contractAddress });
         return null;
       }
     },
@@ -110,7 +112,7 @@ export function useFhePrivateLending() {
         const handle: string = await vault.getCollateralAmount(address);
         return await userDecrypt(handle, contractAddress);
       } catch (err) {
-        console.error('[FHE] decryptCollateral failed:', err);
+        logger.error('FHE_PRIVATE_LENDING', 'decryptCollateral failed', { error: err, contractAddress });
         return null;
       }
     },
@@ -128,7 +130,7 @@ export function useFhePrivateLending() {
         const handle: string = await borrow.getDebtAmount(address);
         return await userDecrypt(handle, contractAddress);
       } catch (err) {
-        console.error('[FHE] decryptDebt failed:', err);
+        logger.error('FHE_PRIVATE_LENDING', 'decryptDebt failed', { error: err, contractAddress });
         return null;
       }
     },
@@ -146,7 +148,7 @@ export function useFhePrivateLending() {
         const handle: string = await pool.getSuppliedAmount(address);
         return await userDecrypt(handle, contractAddress);
       } catch (err) {
-        console.error('[FHE] decryptSupplied failed:', err);
+        logger.error('FHE_PRIVATE_LENDING', 'decryptSupplied failed', { error: err, contractAddress });
         return null;
       }
     },
@@ -158,21 +160,30 @@ export function useFhePrivateLending() {
   const depositCollateral = useCallback(
     async (amount: bigint): Promise<string> => {
       setState(s => ({ ...s, loading: true, error: null }));
+      const module = 'FHE_LENDING_COLLATERAL';
       try {
         const networkId = getNetworkId();
         const contractAddress = getAddresses().PRIVATE_COLLATERAL_VAULT;
+        
+        logger.logFheLifecycle(module, 'ENCRYPTION_START', { amount: amount.toString(), contractAddress });
         const { handle, proof } = await encryptAmount(amount, contractAddress);
+        logger.logFheLifecycle(module, 'ENCRYPTION_SUCCESS', { handle });
+
         const vault = await getContract(contractAddress, ABIS.PrivateCollateralVault, networkId);
+        
+        logger.logFheLifecycle(module, 'BROADCAST');
         const tx = await vault.depositCollateral(handle, proof);
         const receipt = await tx.wait();
+        logger.logFheLifecycle(module, 'CONFIRMED', { txHash: receipt.hash });
 
         const balance = await decryptCollateral(contractAddress);
         setState(s => ({ ...s, collateralBalance: balance, loading: false }));
         return receipt.hash;
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = parseRevertReason(err);
+        logger.error(module, 'depositCollateral failed', { error: err, msg });
         setState(s => ({ ...s, loading: false, error: msg }));
-        throw err;
+        throw new Error(msg);
       }
     },
     [encryptAmount, getContract, getNetworkId, getAddresses, decryptCollateral]
@@ -183,21 +194,30 @@ export function useFhePrivateLending() {
   const withdrawCollateral = useCallback(
     async (amount: bigint): Promise<string> => {
       setState(s => ({ ...s, loading: true, error: null }));
+      const module = 'FHE_LENDING_COLLATERAL';
       try {
         const networkId = getNetworkId();
         const contractAddress = getAddresses().PRIVATE_COLLATERAL_VAULT;
+        
+        logger.logFheLifecycle(module, 'ENCRYPTION_START', { amount: amount.toString(), contractAddress });
         const { handle, proof } = await encryptAmount(amount, contractAddress);
+        logger.logFheLifecycle(module, 'ENCRYPTION_SUCCESS', { handle });
+
         const vault = await getContract(contractAddress, ABIS.PrivateCollateralVault, networkId);
+        
+        logger.logFheLifecycle(module, 'BROADCAST');
         const tx = await vault.withdrawCollateral(handle, proof);
         const receipt = await tx.wait();
+        logger.logFheLifecycle(module, 'CONFIRMED', { txHash: receipt.hash });
 
         const balance = await decryptCollateral(contractAddress);
         setState(s => ({ ...s, collateralBalance: balance, loading: false }));
         return receipt.hash;
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = parseRevertReason(err);
+        logger.error(module, 'withdrawCollateral failed', { error: err, msg });
         setState(s => ({ ...s, loading: false, error: msg }));
-        throw err;
+        throw new Error(msg);
       }
     },
     [encryptAmount, getContract, getNetworkId, getAddresses, decryptCollateral]
@@ -217,7 +237,7 @@ export function useFhePrivateLending() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      }).catch(err => console.error('[positions] write failed:', err));
+      }).catch(err => logger.error('FHE_PRIVATE_LENDING', 'positions sync failed', { error: err }));
     },
     []
   );
@@ -227,13 +247,21 @@ export function useFhePrivateLending() {
   const borrow = useCallback(
     async (amount: bigint, symbol: string): Promise<string> => {
       setState(s => ({ ...s, loading: true, error: null }));
+      const module = 'FHE_LENDING_BORROW';
       try {
         const networkId = getNetworkId();
         const contractAddress = getAddresses().PRIVATE_BORROW_MANAGER;
+        
+        logger.logFheLifecycle(module, 'ENCRYPTION_START', { amount: amount.toString(), symbol, contractAddress });
         const { handle, proof } = await encryptAmount(amount, contractAddress);
+        logger.logFheLifecycle(module, 'ENCRYPTION_SUCCESS', { handle });
+
         const borrowMgr = await getContract(contractAddress, ABIS.PrivateBorrowManager, networkId);
+        
+        logger.logFheLifecycle(module, 'BROADCAST');
         const tx = await borrowMgr.borrow(handle, proof);
         const receipt = await tx.wait();
+        logger.logFheLifecycle(module, 'CONFIRMED', { txHash: receipt.hash });
 
         const balance = await decryptDebt(contractAddress);
         setState(s => ({ ...s, debtBalance: balance, loading: false }));
@@ -251,9 +279,10 @@ export function useFhePrivateLending() {
 
         return receipt.hash;
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = parseRevertReason(err);
+        logger.error(module, 'borrow failed', { error: err, symbol, amount: amount.toString(), msg });
         setState(s => ({ ...s, loading: false, error: msg }));
-        throw err;
+        throw new Error(msg);
       }
     },
     [encryptAmount, getContract, getNetworkId, getAddresses, decryptDebt, address, writePosition]
@@ -264,13 +293,21 @@ export function useFhePrivateLending() {
   const repay = useCallback(
     async (amount: bigint, symbol: string): Promise<string> => {
       setState(s => ({ ...s, loading: true, error: null }));
+      const module = 'FHE_LENDING_REPAY';
       try {
         const networkId = getNetworkId();
         const contractAddress = getAddresses().PRIVATE_BORROW_MANAGER;
+        
+        logger.logFheLifecycle(module, 'ENCRYPTION_START', { amount: amount.toString(), symbol, contractAddress });
         const { handle, proof } = await encryptAmount(amount, contractAddress);
+        logger.logFheLifecycle(module, 'ENCRYPTION_SUCCESS', { handle });
+
         const borrowMgr = await getContract(contractAddress, ABIS.PrivateBorrowManager, networkId);
+        
+        logger.logFheLifecycle(module, 'BROADCAST');
         const tx = await borrowMgr.repay(handle, proof);
         const receipt = await tx.wait();
+        logger.logFheLifecycle(module, 'CONFIRMED', { txHash: receipt.hash });
 
         const balance = await decryptDebt(contractAddress);
         setState(s => ({ ...s, debtBalance: balance, loading: false }));
@@ -288,9 +325,10 @@ export function useFhePrivateLending() {
 
         return receipt.hash;
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = parseRevertReason(err);
+        logger.error(module, 'repay failed', { error: err, symbol, amount: amount.toString(), msg });
         setState(s => ({ ...s, loading: false, error: msg }));
-        throw err;
+        throw new Error(msg);
       }
     },
     [encryptAmount, getContract, getNetworkId, getAddresses, decryptDebt, address, writePosition]
@@ -301,13 +339,21 @@ export function useFhePrivateLending() {
   const supply = useCallback(
     async (amount: bigint, symbol: string): Promise<string> => {
       setState(s => ({ ...s, loading: true, error: null }));
+      const module = 'FHE_LENDING_SUPPLY';
       try {
         const networkId = getNetworkId();
         const contractAddress = getAddresses().PRIVATE_LENDING_POOL;
+        
+        logger.logFheLifecycle(module, 'ENCRYPTION_START', { amount: amount.toString(), symbol, contractAddress });
         const { handle, proof } = await encryptAmount(amount, contractAddress);
+        logger.logFheLifecycle(module, 'ENCRYPTION_SUCCESS', { handle });
+
         const pool = await getContract(contractAddress, ABIS.PrivateLendingPool, networkId);
+        
+        logger.logFheLifecycle(module, 'BROADCAST');
         const tx = await pool.supply(handle, proof);
         const receipt = await tx.wait();
+        logger.logFheLifecycle(module, 'CONFIRMED', { txHash: receipt.hash });
 
         const balance = await decryptSupplied(contractAddress);
         setState(s => ({ ...s, suppliedBalance: balance, loading: false }));
@@ -325,9 +371,10 @@ export function useFhePrivateLending() {
 
         return receipt.hash;
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = parseRevertReason(err);
+        logger.error(module, 'supply failed', { error: err, symbol, amount: amount.toString(), msg });
         setState(s => ({ ...s, loading: false, error: msg }));
-        throw err;
+        throw new Error(msg);
       }
     },
     [encryptAmount, getContract, getNetworkId, getAddresses, decryptSupplied, address, writePosition]
@@ -338,13 +385,21 @@ export function useFhePrivateLending() {
   const withdrawSupply = useCallback(
     async (amount: bigint, symbol: string): Promise<string> => {
       setState(s => ({ ...s, loading: true, error: null }));
+      const module = 'FHE_LENDING_WITHDRAW';
       try {
         const networkId = getNetworkId();
         const contractAddress = getAddresses().PRIVATE_LENDING_POOL;
+        
+        logger.logFheLifecycle(module, 'ENCRYPTION_START', { amount: amount.toString(), symbol, contractAddress });
         const { handle, proof } = await encryptAmount(amount, contractAddress);
+        logger.logFheLifecycle(module, 'ENCRYPTION_SUCCESS', { handle });
+
         const pool = await getContract(contractAddress, ABIS.PrivateLendingPool, networkId);
+        
+        logger.logFheLifecycle(module, 'BROADCAST');
         const tx = await pool.withdraw(handle, proof);
         const receipt = await tx.wait();
+        logger.logFheLifecycle(module, 'CONFIRMED', { txHash: receipt.hash });
 
         const balance = await decryptSupplied(contractAddress);
         setState(s => ({ ...s, suppliedBalance: balance, loading: false }));
@@ -362,9 +417,10 @@ export function useFhePrivateLending() {
 
         return receipt.hash;
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = parseRevertReason(err);
+        logger.error(module, 'withdrawSupply failed', { error: err, symbol, amount: amount.toString(), msg });
         setState(s => ({ ...s, loading: false, error: msg }));
-        throw err;
+        throw new Error(msg);
       }
     },
     [encryptAmount, getContract, getNetworkId, getAddresses, decryptSupplied, address, writePosition]

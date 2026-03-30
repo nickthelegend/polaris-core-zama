@@ -8,6 +8,7 @@ import { AppHeader } from "@/components/header"
 import { AppFooter } from "@/components/footer"
 import { Providers } from "@/components/providers"
 import { Suspense } from "react"
+import { ErrorBoundary } from "@/components/error-boundary"
 
 export const viewport = {
   width: "device-width",
@@ -40,11 +41,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className={`font-mono ${GeistSans.variable} ${GeistMono.variable} antialiased min-h-dvh bg-background`}>
         <Suspense fallback={<div>Loading...</div>}>
           <Providers>
-            <div className="mx-auto w-full flex flex-col min-h-screen px-4 md:px-8 lg:px-12">
-              <AppHeader />
-              <main className="pb-24 flex-grow">{children}</main>
-              <AppFooter />
-            </div>
+            <ErrorBoundary>
+              <div className="mx-auto w-full flex flex-col min-h-screen px-4 md:px-8 lg:px-12">
+                <AppHeader />
+                <main className="pb-24 flex-grow">{children}</main>
+                <AppFooter />
+              </div>
+            </ErrorBoundary>
           </Providers>
         </Suspense>
         <Analytics />

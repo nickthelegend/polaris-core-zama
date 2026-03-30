@@ -10,6 +10,9 @@ import { parseUnits } from "viem"
 import { CONTRACTS, NETWORKS } from "@/lib/contracts"
 import { useAccount } from "wagmi"
 import { syncTransaction, syncPosition } from "@/lib/sync-utils"
+import { logger } from "@/lib/logger"
+import { parseRevertReason } from "@/lib/revert-mapper"
+import { cn } from "@/lib/utils"
 
 export type ModalMode = "supply" | "borrow"
 
@@ -124,6 +127,7 @@ export function LendingActionModal({
       
       // Sync to Backend
       if (address) {
+        logger.info('LENDING_MODAL', 'Syncing transaction to ledger', { txHash: hash, mode, asset: pool.symbol });
         await syncTransaction({
           userAddress: address,
           type: isSupply ? "supply" : "borrow",
@@ -144,6 +148,7 @@ export function LendingActionModal({
       }
 
       updateLog(3, { status: "done", detail: `Confirmed · ${hash.slice(0, 10)}...` })
+      logger.info('LENDING_MODAL', 'Action completed successfully', { txHash: hash });
 
       // Step 4 — state
       addLog({
@@ -157,7 +162,8 @@ export function LendingActionModal({
       setTxHash(hash)
       setDone(true)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err)
+      const msg = parseRevertReason(err)
+      logger.error('LENDING_MODAL', 'Interaction failed', { error: err, mode, amount, msg });
       addLog({ id: 99, step: "Error", detail: msg, status: "error" })
     }
   }
@@ -190,30 +196,29 @@ export function LendingActionModal({
           </div>
 
           {/* Amount input */}
-          <div className="bg-[#05080f]/70 border border-border/20 rounded-2xl p-5 space-y-2">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] text-foreground/40 uppercase tracking-widest">
-                {isSupply ? "Amount to supply" : "Amount to borrow"}
+              <label className="text-[10px] text-foreground/40 uppercase tracking-[0.2em] font-black">
+                {isSupply ? "Amount_to_supply" : "Amount_to_borrow"}
               </label>
               {walletBalance === null ? (
-                <span className="text-[10px] text-foreground/30 animate-pulse">Loading balance...</span>
+                <span className="text-[10px] text-foreground/30 animate-pulse font-black uppercase tracking-widest">Scanning_Wallet...</span>
               ) : (
                 <button
                   type="button"
                   onClick={() => maxAmount && setAmount(maxAmount)}
-                  className="text-[10px] text-foreground/40 hover:text-primary transition-colors"
+                  className="text-[10px] text-foreground/40 hover:text-primary transition-colors font-black uppercase tracking-widest"
                 >
                   Balance: <span className="font-mono font-bold text-foreground/70">{walletBalance} {pool.symbol}</span>
                 </button>
               )}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 bg-[#05080f]/40 border border-white/5 p-2 rounded-2xl group focus-within:border-primary/40 transition-all shadow-inner">
               <input
                 type="number"
                 value={amount}
                 onChange={e => {
                   const val = e.target.value
-                  // clamp to max balance in supply mode
                   if (isSupply && maxAmount && parseFloat(val) > parseFloat(maxAmount)) {
                     setAmount(maxAmount)
                   } else {
@@ -221,7 +226,6 @@ export function LendingActionModal({
                   }
                 }}
                 placeholder="0"
-                max={isSupply && maxAmount ? maxAmount : undefined}
                 className="flex-1 bg-transparent text-3xl font-light text-foreground/70 placeholder:text-foreground/20 focus:outline-none min-w-0"
               />
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -229,12 +233,15 @@ export function LendingActionModal({
                   <button
                     type="button"
                     onClick={() => setAmount(maxAmount)}
-                    className="text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                    className="text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 hover:scale-105 active:scale-95 transition-all border border-primary/20"
                   >
                     MAX
                   </button>
                 )}
-                <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold ${isSupply ? "bg-green-500/10 border-green-500/20 text-green-400" : "bg-red-500/10 border-red-500/20 text-red-400"}`}>
+                <div className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-black uppercase tracking-widest",
+                  isSupply ? "bg-green-500/10 border-green-500/20 text-green-400" : "bg-red-500/10 border-red-500/20 text-red-400"
+                )}>
                   <TokenIcon symbol={pool.symbol} size={14} className="flex-shrink-0" />
                   {pool.symbol}
                 </div>
@@ -242,14 +249,14 @@ export function LendingActionModal({
             </div>
             {/* Exceeded balance warning */}
             {isSupply && amount && maxAmount && parseFloat(amount) > parseFloat(maxAmount) && (
-              <p className="text-[10px] text-red-400 flex items-center gap-1">
-                <AlertCircle size={10} /> Exceeds your balance of {maxAmount} {pool.symbol}
+              <p className="text-[10px] text-red-400 font-black uppercase tracking-widest flex items-center gap-1 animate-pulse">
+                <AlertCircle size={10} /> Exceeds_Balance: {maxAmount}
               </p>
             )}
             {maxAmount && (
               <div className="flex gap-4 pt-1">
-                <span className="text-[9px] text-foreground/30">
-                  {isSupply ? "Max supply" : "Max borrow (80% LTV)"}:{" "}
+                <span className="text-[9px] text-foreground/30 font-black uppercase tracking-widest">
+                  {isSupply ? "Max_supply" : "Max_borrow"} · 80% LTV:{" "}
                   <span className="text-foreground/50 font-mono">{maxAmount} {pool.symbol}</span>
                 </span>
               </div>
@@ -286,10 +293,15 @@ export function LendingActionModal({
           <button
             onClick={handleSubmit}
             disabled={loading || !amount || done || (isSupply && !!maxAmount && parseFloat(amount) > parseFloat(maxAmount))}
-            className={`w-full py-4 rounded-2xl font-bold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${isSupply ? "bg-primary hover:bg-primary/90 text-black" : "bg-red-500/80 hover:bg-red-500 text-white"}`}
+            className={cn(
+              "w-full py-4 rounded-2xl font-black text-sm uppercase tracking-tighter transition-all disabled:opacity-50 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]",
+              isSupply 
+                ? "bg-primary hover:bg-primary/90 shadow-[0_0_20px_rgba(166,242,74,0.2)] text-black" 
+                : "bg-red-500 hover:bg-red-600 shadow-[0_0_20px_rgba(239,68,68,0.2)] text-white"
+            )}
           >
             {loading && <Loader2 size={15} className="animate-spin" />}
-            {done ? "Done ✓" : isSupply ? `Supply ${pool.symbol}` : `Borrow ${pool.symbol}`}
+            {done ? "Done ✓" : isSupply ? `Supply_${pool.symbol}` : `Borrow_${pool.symbol}`}
           </button>
         </div>
 

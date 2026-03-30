@@ -7,6 +7,8 @@ import { ReclaimProofRequest } from "@reclaimprotocol/js-sdk"
 import type { VerificationOption } from "@/lib/reclaim-types"
 import { Loader2, CheckCircle2, XCircle, Smartphone } from "lucide-react"
 import QRCode from "qrcode"
+import { logger } from "@/lib/logger"
+import { cn } from "@/lib/utils"
 
 interface ReclaimVerificationModalProps {
   open: boolean
@@ -33,8 +35,9 @@ export function ReclaimVerificationModal({ open, onOpenChange, provider, onSucce
       setIsLoading(true)
       setQrCodeUrl(null)
       setErrorMessage(null)
+      const module = "RECLAIM_VERIFY"
 
-      console.log("[v0] Starting verification for provider:", provider.id)
+      logger.info(module, "Starting verification", { provider: provider.id })
 
       // Step 1: Fetch the configuration from backend
       const response = await fetch("/api/generate-config", {
@@ -49,13 +52,12 @@ export function ReclaimVerificationModal({ open, onOpenChange, provider, onSucce
 
       const { reclaimProofRequestConfig } = await response.json()
 
-      // Step 2: Initialize the ReclaimProofRequest
       const reclaimProofRequest = await ReclaimProofRequest.fromJsonString(reclaimProofRequestConfig)
 
       // Step 3: Generate the request URL
       const requestUrl = await reclaimProofRequest.getRequestUrl()
 
-      console.log("[v0] Generated request URL:", requestUrl)
+      logger.info(module, "Generated request URL", { requestUrl })
 
       // Step 4: Generate QR code
       const qrDataUrl = await QRCode.toDataURL(requestUrl, {
@@ -73,7 +75,7 @@ export function ReclaimVerificationModal({ open, onOpenChange, provider, onSucce
       // Step 5: Start listening for proof submissions
       await reclaimProofRequest.startSession({
         onSuccess: (proofs) => {
-          console.log("[v0] Successfully received proof:", proofs)
+          logger.info(module, "Successfully received proof", { proofs })
           setStatus("success")
           setIsLoading(false)
 
@@ -121,12 +123,14 @@ export function ReclaimVerificationModal({ open, onOpenChange, provider, onSucce
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+        <DialogHeader className="space-y-1">
+          <DialogTitle className="flex items-center gap-2 font-black uppercase tracking-widest text-lg">
             <span className="text-2xl">{provider.icon}</span>
-            Verify {provider.name}
+            Verify_{provider.name}
           </DialogTitle>
-          <DialogDescription>{provider.description}</DialogDescription>
+          <DialogDescription className="text-[10px] uppercase font-black tracking-widest text-foreground/30">
+            {provider.description}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col items-center justify-center py-6 space-y-4">
@@ -159,10 +163,10 @@ export function ReclaimVerificationModal({ open, onOpenChange, provider, onSucce
           {status === "success" && (
             <div className="flex flex-col items-center gap-4">
               <CheckCircle2 className="h-16 w-16 text-green-500" />
-              <div className="text-center">
-                <p className="text-lg font-semibold">Verification Successful!</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  You've earned <span className="font-bold text-primary">{provider.algoReward} ALGO</span>
+              <div className="text-center space-y-2">
+                <p className="text-lg font-black uppercase tracking-widest text-primary">Verification_Successful!</p>
+                <p className="text-[10px] text-foreground/40 font-black uppercase tracking-widest">
+                  Protocol_Credit_Issued: <span className="text-primary">{provider.algoReward} POL_TOKENS</span>
                 </p>
               </div>
             </div>

@@ -1,11 +1,11 @@
 "use client"
 
-import { useObolusWallet } from "@/lib/hooks/useObolusWallet"
-import { CardanoWallet } from "@meshsdk/react";
+import { useAccount } from "wagmi"
+import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button"
 import Link from "next/link"
 
 export function LandingPage() {
-    const { connect, connected: authenticated } = useObolusWallet()
+    const { isConnected: authenticated } = useAccount()
 
 
     return (
@@ -20,7 +20,7 @@ export function LandingPage() {
                             <path d="M 500, 500 m -400, 0 a 400,400 0 1,1 800,0 a 400,400 0 1,1 -800,0" fill="transparent" id="circlePath"></path>
                             <text className="text-ring">
                                 <textPath xlinkHref="#circlePath">
-                                    YOUR ADA IS NOW YOUR CREDIT CARD • YOUR ADA IS NOW YOUR CREDIT CARD •
+                                    PRIVACY_IS_POWER • POLARIS_PROTOCOL • CONFIDENTIAL_LENDING • 
                                 </textPath>
                             </text>
                         </svg>
@@ -47,14 +47,14 @@ export function LandingPage() {
                         <div className="inline-block px-4 py-1.5 bg-primary/10 border border-primary/20 rounded-full mb-6">
                             <p className="text-[10px] font-mono tracking-[0.4em] text-primary uppercase">Protocol_Heartbeat_v1.0</p>
                         </div>
-                        <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-4 italic uppercase font-display">
-                            OBOLUS PROTOCOL
+                        <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-4 italic uppercase font-display text-white">
+                            POLARIS PROTOCOL
                         </h1>
                         <p className="text-slate-200 font-mono text-lg tracking-widest uppercase max-w-3xl mx-auto mb-4">
-                            Which provides BNPL and makes your ADA work for you.
+                            Confidential Lending & Private Swaps on Sepolia.
                         </p>
                         <p className="text-slate-400 font-mono text-sm tracking-widest uppercase max-w-2xl mx-auto">
-                            Don't let your ADA sleep in your wallet. Activate a BNPL account now.
+                            Powered by Zama fhEVM. Secure your assets with on-chain-encryption.
                         </p>
                     </div>
 
@@ -73,12 +73,12 @@ export function LandingPage() {
                     </div>
 
                     <div className="flex flex-col md:flex-row items-center gap-6">
-                        <div className="landing-wallet-wrapper">
-                            <CardanoWallet label="Connect Wallet" isDark={true} persist={true} />
+                        <div className="landing-wallet-wrapper scale-125 origin-center transform-gpu">
+                            <ConnectWalletButton />
                         </div>
-                        <button className="bg-[#121a2a]/80 border border-slate-700 text-white px-12 py-5 rounded-xl font-bold text-xl hover:bg-[#121a2a] transition-all min-w-[280px] backdrop-blur-md font-mono uppercase tracking-tighter">
-                            VIEW ECOSYSTEM
-                        </button>
+                        <Link href="/pools" className="bg-primary px-12 py-5 rounded-2xl font-black text-xl text-black hover:scale-[1.02] active:scale-[0.98] transition-all min-w-[280px] shadow-[0_0_30px_rgba(166,242,74,0.3)] font-mono uppercase tracking-tighter flex items-center justify-center">
+                            LAUNCH_INTERFACE
+                        </Link>
                     </div>
                 </div>
             </main>
@@ -122,14 +122,14 @@ export function LandingPage() {
                 <div className="marquee-container">
                     <div className="marquee-content flex gap-20 items-center">
                         <div className="flex gap-8 items-center">
-                            <span className="text-primary font-mono text-base font-bold tracking-[0.3em] uppercase">OBOLUS NETWORK STATUS:</span>
-                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">STAKED_ADA: 4,200,540</span>
-                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">STAKED_USD: 85,120.33</span>
-                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">TOTAL_CREDIT_ISSUED: $2,450,192.00</span>
-                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">ACTIVE_STAKERS: 12,402</span>
-                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">CORE_SYNC_HEALTH: 100%</span>
-                            <span className="text-primary font-mono text-base font-bold tracking-[0.3em] uppercase ml-20">OBOLUS NETWORK STATUS:</span>
-                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">STAKED_ADA: 4,200,540</span>
+                            <span className="text-primary font-mono text-base font-bold tracking-[0.3em] uppercase">POLARIS NETWORK STATUS:</span>
+                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">LOCKED_VALUE: $450,120</span>
+                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">FHE_OPS_SEC: 1,240</span>
+                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">TOTAL_LENT: $2,450,192.00</span>
+                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">ACTIVE_VAULTS: 12,402</span>
+                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">ZK_SYNC_HEALTH: 100%</span>
+                            <span className="text-primary font-mono text-base font-bold tracking-[0.3em] uppercase ml-20">POLARIS NETWORK STATUS:</span>
+                            <span className="text-white/60 font-mono text-sm uppercase tracking-tighter whitespace-nowrap">LOCKED_POL: 4,200,540</span>
                         </div>
                     </div>
                 </div>
