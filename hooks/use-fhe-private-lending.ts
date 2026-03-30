@@ -292,10 +292,29 @@ export function useFhePrivateLending() {
     [encryptAmount, getContract, getNetworkId, getAddresses, decryptCollateral]
   );
 
+  // ── writePosition ──────────────────────────────────────────────────────────
+  // Internal helper — Requirements 7.1, 7.2, 7.3, 7.4, 7.5
+  const writePosition = useCallback(
+    (payload: {
+      walletAddress: string;
+      type: 'SUPPLY' | 'BORROW';
+      symbol: string;
+      entryAmount: number;
+      txHash: string;
+    }) => {
+      fetch('/api/positions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(err => console.error('[positions] write failed:', err));
+    },
+    []
+  );
+
   // ── borrow ─────────────────────────────────────────────────────────────────
   // Requirement 3.1
   const borrow = useCallback(
-    async (amount: bigint): Promise<string> => {
+    async (amount: bigint, symbol: string): Promise<string> => {
       setState(s => ({ ...s, loading: true, error: null }));
       try {
         const networkId = getNetworkId();
@@ -307,6 +326,18 @@ export function useFhePrivateLending() {
 
         const balance = await decryptDebt(contractAddress);
         setState(s => ({ ...s, debtBalance: balance, loading: false }));
+
+        // Requirement 7.2 — record position after confirmed tx
+        if (address) {
+          writePosition({
+            walletAddress: address.toLowerCase(),
+            type: 'BORROW',
+            symbol,
+            entryAmount: Number(amount) / 1e18,
+            txHash: receipt.hash,
+          });
+        }
+
         return receipt.hash;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -314,13 +345,13 @@ export function useFhePrivateLending() {
         throw err;
       }
     },
-    [encryptAmount, getContract, getNetworkId, getAddresses, decryptDebt]
+    [encryptAmount, getContract, getNetworkId, getAddresses, decryptDebt, address, writePosition]
   );
 
   // ── repay ──────────────────────────────────────────────────────────────────
   // Requirement 3.3
   const repay = useCallback(
-    async (amount: bigint): Promise<string> => {
+    async (amount: bigint, symbol: string): Promise<string> => {
       setState(s => ({ ...s, loading: true, error: null }));
       try {
         const networkId = getNetworkId();
@@ -332,6 +363,18 @@ export function useFhePrivateLending() {
 
         const balance = await decryptDebt(contractAddress);
         setState(s => ({ ...s, debtBalance: balance, loading: false }));
+
+        // Requirement 7.3 — close borrow position after repay
+        if (address) {
+          writePosition({
+            walletAddress: address.toLowerCase(),
+            type: 'BORROW',
+            symbol,
+            entryAmount: 0,
+            txHash: receipt.hash,
+          });
+        }
+
         return receipt.hash;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -339,13 +382,13 @@ export function useFhePrivateLending() {
         throw err;
       }
     },
-    [encryptAmount, getContract, getNetworkId, getAddresses, decryptDebt]
+    [encryptAmount, getContract, getNetworkId, getAddresses, decryptDebt, address, writePosition]
   );
 
   // ── supply ─────────────────────────────────────────────────────────────────
   // Requirement 4.1
   const supply = useCallback(
-    async (amount: bigint): Promise<string> => {
+    async (amount: bigint, symbol: string): Promise<string> => {
       setState(s => ({ ...s, loading: true, error: null }));
       try {
         const networkId = getNetworkId();
@@ -357,6 +400,18 @@ export function useFhePrivateLending() {
 
         const balance = await decryptSupplied(contractAddress);
         setState(s => ({ ...s, suppliedBalance: balance, loading: false }));
+
+        // Requirement 7.1 — record position after confirmed tx
+        if (address) {
+          writePosition({
+            walletAddress: address.toLowerCase(),
+            type: 'SUPPLY',
+            symbol,
+            entryAmount: Number(amount) / 1e18,
+            txHash: receipt.hash,
+          });
+        }
+
         return receipt.hash;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -364,13 +419,13 @@ export function useFhePrivateLending() {
         throw err;
       }
     },
-    [encryptAmount, getContract, getNetworkId, getAddresses, decryptSupplied]
+    [encryptAmount, getContract, getNetworkId, getAddresses, decryptSupplied, address, writePosition]
   );
 
   // ── withdrawSupply ─────────────────────────────────────────────────────────
   // Requirement 4.2
   const withdrawSupply = useCallback(
-    async (amount: bigint): Promise<string> => {
+    async (amount: bigint, symbol: string): Promise<string> => {
       setState(s => ({ ...s, loading: true, error: null }));
       try {
         const networkId = getNetworkId();
@@ -382,6 +437,18 @@ export function useFhePrivateLending() {
 
         const balance = await decryptSupplied(contractAddress);
         setState(s => ({ ...s, suppliedBalance: balance, loading: false }));
+
+        // Requirement 7.4 — close supply position after full withdrawal
+        if (address) {
+          writePosition({
+            walletAddress: address.toLowerCase(),
+            type: 'SUPPLY',
+            symbol,
+            entryAmount: 0,
+            txHash: receipt.hash,
+          });
+        }
+
         return receipt.hash;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -389,7 +456,7 @@ export function useFhePrivateLending() {
         throw err;
       }
     },
-    [encryptAmount, getContract, getNetworkId, getAddresses, decryptSupplied]
+    [encryptAmount, getContract, getNetworkId, getAddresses, decryptSupplied, address, writePosition]
   );
 
   return {

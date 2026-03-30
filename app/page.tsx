@@ -7,6 +7,7 @@ import {
   ChevronDown, Info, ArrowLeftRight, Check,
 } from "lucide-react"
 import { TokenIcon } from "@/components/token-icon"
+import { useGlobalStats } from "@/hooks/use-global-stats"
 
 const BORROW_ASSETS = [
   { symbol: "gUSD", color: "bg-purple-500" },
@@ -195,7 +196,36 @@ function PrivateActionWidget() {
 }
 
 export default function Page() {
-  const stats = { totalSupplied: "••••••••", totalBorrowed: "••••••••", healthFactor: "Safe", availableCredit: "Hidden" }
+  const { stats: globalStats, loading: statsLoading, error: statsError } = useGlobalStats()
+
+  const fmt = (val: number | undefined, suffix = "") =>
+    statsLoading || statsError || val === undefined ? "—" : `${val}${suffix}`
+
+  const encryptedStats = { totalSupplied: "••••••••", totalBorrowed: "••••••••", healthFactor: "Safe", availableCredit: "Hidden" }
+
+  const statCards = [
+    {
+      tag: "SUPPLY",
+      asset: "USDC",
+      sub: fmt(globalStats?.avgSupplyApy !== undefined ? +globalStats.avgSupplyApy.toFixed(1) : undefined, "% Avg APY"),
+      icon: TrendingUp,
+    },
+    {
+      tag: "BORROW",
+      asset: "WETH",
+      sub: "2.1% Avg APY",
+      icon: Zap,
+    },
+    {
+      tag: "ASSETS",
+      asset: "TOTAL",
+      sub: statsLoading || statsError || globalStats?.activePools === undefined
+        ? "— Configured"
+        : `${globalStats.activePools} Configured`,
+      icon: Target,
+    },
+  ]
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 font-mono">
       <div className="lg:col-span-7 space-y-8">
@@ -219,21 +249,21 @@ export default function Page() {
                 <div className="text-[10px] text-foreground/40 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
                   <CreditCard size={12} className="text-primary" />Total_Supplied_(Encrypted)
                 </div>
-                <div className="text-5xl font-black tracking-tighter text-foreground font-mono">{stats.totalSupplied}</div>
+                <div className="text-5xl font-black tracking-tighter text-foreground font-mono">{encryptedStats.totalSupplied}</div>
                 <p className="text-[10px] text-foreground/20 italic mt-2">*Only you can decrypt your position data.</p>
               </div>
               <div>
                 <div className="text-[10px] text-foreground/40 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
                   <History size={12} className="text-primary" />Total_Borrowed_(Encrypted)
                 </div>
-                <div className="text-4xl font-bold tracking-tight text-white/50">{stats.totalBorrowed}</div>
+                <div className="text-4xl font-bold tracking-tight text-white/50">{encryptedStats.totalBorrowed}</div>
               </div>
             </div>
             <div className="flex flex-col justify-between space-y-8">
               <div className="bg-secondary/20 border border-border/40 rounded-2xl p-6 space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-[10px] text-foreground/50 uppercase tracking-widest">Health_Factor</span>
-                  <span className="text-sm font-black text-primary px-2 py-0.5 rounded border border-primary/30">{stats.healthFactor}</span>
+                  <span className="text-sm font-black text-primary px-2 py-0.5 rounded border border-primary/30">{encryptedStats.healthFactor}</span>
                 </div>
                 <div className="h-2 bg-secondary/50 rounded-full overflow-hidden border border-border/10">
                   <div className="h-full w-[85%] bg-primary" />
@@ -249,18 +279,14 @@ export default function Page() {
                 </div>
                 <div className="p-4 bg-background/40 border border-border/30 rounded-xl">
                   <div className="text-[9px] text-foreground/40 uppercase mb-1">Borrow Power</div>
-                  <div className="text-sm font-bold text-primary">{stats.availableCredit}</div>
+                  <div className="text-sm font-bold text-primary">{encryptedStats.availableCredit}</div>
                 </div>
               </div>
             </div>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            { tag: "SUPPLY", asset: "USDC", sub: "4.5% Avg APY", icon: TrendingUp },
-            { tag: "BORROW", asset: "WETH", sub: "2.1% Avg APY", icon: Zap },
-            { tag: "ASSETS", asset: "TOTAL", sub: "12 Configured", icon: Target },
-          ].map((item, i) => (
+          {statCards.map((item, i) => (
             <div key={i} className="bg-card/30 border border-border/50 rounded-2xl p-6 hover:bg-card/50 transition-colors cursor-pointer group">
               <div className="flex items-center justify-between mb-4">
                 <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary"><item.icon size={18} /></div>

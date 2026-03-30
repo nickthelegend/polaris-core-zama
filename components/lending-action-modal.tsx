@@ -74,7 +74,7 @@ export function LendingActionModal({
       // Step 3 — main action
       const fn = isSupply ? "supply" : "borrow"
       addLog({ id: 3, step: `Calling ${fn}()`, detail: "Sending encrypted tx to PrivateLendingPool...", status: "pending" })
-      const hash = isSupply ? await supply(wei) : await borrow(wei)
+      const hash = isSupply ? await supply(wei, pool.symbol) : await borrow(wei, pool.symbol)
       updateLog(3, { status: "done", detail: `Confirmed · ${hash.slice(0, 10)}...` })
 
       // Step 4 — state

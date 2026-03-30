@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from "react"
 import { ChevronDown, Check, Info, ShieldAlert, ChevronRight, Lock, Loader2 } from "lucide-react"
 import { TokenIcon } from "@/components/token-icon"
 import { useFhePrivateLending } from "@/hooks/use-fhe-private-lending"
+import { usePolaris } from "@/hooks/use-polaris"
+import { CONTRACTS, NETWORKS } from "@/lib/contracts"
 
 const BORROW_ASSETS = [
   { symbol: "gUSD", color: "bg-purple-500" },
@@ -62,8 +64,30 @@ export default function BorrowPage() {
   const [collateralAsset, setCollateralAsset] = useState("gETH")
   const [txHash, setTxHash] = useState<string | null>(null)
   const [txError, setTxError] = useState<string | null>(null)
+  const [decryptingBalances, setDecryptingBalances] = useState(false)
 
-  const { borrow, depositCollateral, loading, error, debtBalance, collateralBalance } = useFhePrivateLending()
+  const { borrow, depositCollateral, loading, error, debtBalance, collateralBalance, decryptCollateral, decryptDebt } = useFhePrivateLending()
+  const { address, chainId } = usePolaris()
+
+  // Resolve contract addresses for the connected network — Requirements 8.1
+  const getAddresses = () => {
+    if (!chainId) return CONTRACTS.PRIVATE_LENDING
+    const part = chainId.includes(':') ? chainId.split(':')[1] : chainId
+    const networkId = parseInt(part, 10) || NETWORKS.SEPOLIA.id
+    return networkId === NETWORKS.LOCAL_HARDHAT.id ? CONTRACTS.LOCAL_HARDHAT : CONTRACTS.PRIVATE_LENDING
+  }
+
+  // Decrypt collateral and debt on mount when wallet is connected — Requirements 8.1, 8.2, 8.3
+  useEffect(() => {
+    if (!address) return
+    const addresses = getAddresses()
+    setDecryptingBalances(true)
+    Promise.all([
+      decryptCollateral(addresses.PRIVATE_COLLATERAL_VAULT),
+      decryptDebt(addresses.PRIVATE_BORROW_MANAGER),
+    ]).finally(() => setDecryptingBalances(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [address])
 
   const handleSubmit = async () => {
     setTxError(null)
@@ -77,7 +101,7 @@ export default function BorrowPage() {
       // Then borrow
       if (borrowAmount && parseFloat(borrowAmount) > 0) {
         const borrowWei = BigInt(Math.floor(parseFloat(borrowAmount) * 1e9)) * BigInt(1e9)
-        const hash = await borrow(borrowWei)
+        const hash = await borrow(borrowWei, borrowAsset)
         setTxHash(hash)
       }
     } catch (err: unknown) {
@@ -169,9 +193,9 @@ export default function BorrowPage() {
             </h3>
             <div className="space-y-4">
               {[
-                { label: "Collateral (Encrypted)", value: collateralBalance !== null ? collateralBalance.toString() : "••••••••", muted: collateralBalance === null },
+                { label: "Collateral (Encrypted)", value: decryptingBalances ? "••••••••" : collateralBalance !== null ? collateralBalance.toString() : "••••••••", muted: decryptingBalances || collateralBalance === null },
                 { label: "Projected Loan Value", value: borrowAmount ? `${Number(borrowAmount).toLocaleString()}` : "—" },
-                { label: "Debt Balance (Encrypted)", value: debtBalance !== null ? debtBalance.toString() : "••••••••", muted: debtBalance === null },
+                { label: "Debt Balance (Encrypted)", value: decryptingBalances ? "••••••••" : debtBalance !== null ? debtBalance.toString() : "••••••••", muted: decryptingBalances || debtBalance === null },
                 { label: "Liquidation Price", value: "Hidden", muted: true },
               ].map(row => (
                 <div key={row.label} className="flex justify-between items-center text-[11px] border-b border-border/10 pb-4 last:border-0 last:pb-0">
