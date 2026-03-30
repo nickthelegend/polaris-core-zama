@@ -1,9 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { X, Loader2, CheckCircle2, Eye, EyeOff, Lock, ShieldCheck, AlertCircle } from "lucide-react"
 import { TokenIcon } from "@/components/token-icon"
 import { useFhePrivateLending } from "@/hooks/use-fhe-private-lending"
+import { usePolaris } from "@/hooks/use-polaris"
+import { TOKENS, getTokenAddress } from "@/config/tokens"
+import { NETWORKS } from "@/lib/contracts"
 
 export type ModalMode = "supply" | "borrow"
 
@@ -40,11 +43,38 @@ export function LendingActionModal({
   const [txHash, setTxHash] = useState<string | null>(null)
   const [showEncrypted, setShowEncrypted] = useState(false)
   const [done, setDone] = useState(false)
+  const [walletBalance, setWalletBalance] = useState<string | null>(null)
 
   const { supply, borrow, depositCollateral, loading } = useFhePrivateLending()
+  const { getTokenBalance, address, chainId } = usePolaris()
 
   const isSupply = mode === "supply"
   const apy = isSupply ? pool.supplyApy : pool.borrowApy
+
+  // Resolve chainId number
+  const networkId = (() => {
+    if (!chainId) return NETWORKS.LOCAL_HARDHAT.id
+    const part = chainId.includes(':') ? chainId.split(':')[1] : chainId
+    return parseInt(part, 10) || NETWORKS.LOCAL_HARDHAT.id
+  })()
+
+  // Fetch wallet balance for the selected token
+  useEffect(() => {
+    if (!address) return
+    const tokenAddress = getTokenAddress(pool.symbol, networkId)
+    if (!tokenAddress) return
+    setWalletBalance(null)
+    getTokenBalance(tokenAddress, networkId).then(bal => {
+      setWalletBalance(parseFloat(bal).toFixed(4))
+    }).catch(() => setWalletBalance("—"))
+  }, [address, pool.symbol, networkId, getTokenBalance])
+
+  // Max you can supply = wallet balance; max borrow = 80% of wallet balance (simple LTV)
+  const maxSupply = walletBalance && walletBalance !== "—" ? walletBalance : null
+  const maxBorrow = walletBalance && walletBalance !== "—"
+    ? (parseFloat(walletBalance) * 0.8).toFixed(4)
+    : null
+  const maxAmount = isSupply ? maxSupply : maxBorrow
 
   const addLog = (log: TxLog) => setLogs(prev => [...prev, log])
   const updateLog = (id: number, patch: Partial<TxLog>) =>
@@ -123,9 +153,16 @@ export function LendingActionModal({
 
           {/* Amount input */}
           <div className="bg-[#05080f]/70 border border-border/20 rounded-2xl p-5 space-y-2">
-            <label className="text-[10px] text-foreground/40 uppercase tracking-widest">
-              {isSupply ? "Amount to supply" : "Amount to borrow"}
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] text-foreground/40 uppercase tracking-widest">
+                {isSupply ? "Amount to supply" : "Amount to borrow"}
+              </label>
+              {walletBalance !== null && (
+                <span className="text-[10px] text-foreground/40">
+                  Balance: <span className="text-foreground/70 font-mono">{walletBalance} {pool.symbol}</span>
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-3">
               <input
                 type="number"
@@ -134,11 +171,30 @@ export function LendingActionModal({
                 placeholder="0"
                 className="flex-1 bg-transparent text-3xl font-light text-foreground/70 placeholder:text-foreground/20 focus:outline-none min-w-0"
               />
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold flex-shrink-0 ${isSupply ? "bg-green-500/10 border-green-500/20 text-green-400" : "bg-red-500/10 border-red-500/20 text-red-400"}`}>
-                <TokenIcon symbol={pool.symbol} size={14} className="flex-shrink-0" />
-                {pool.symbol}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {maxAmount && (
+                  <button
+                    type="button"
+                    onClick={() => setAmount(maxAmount)}
+                    className="text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    MAX
+                  </button>
+                )}
+                <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold ${isSupply ? "bg-green-500/10 border-green-500/20 text-green-400" : "bg-red-500/10 border-red-500/20 text-red-400"}`}>
+                  <TokenIcon symbol={pool.symbol} size={14} className="flex-shrink-0" />
+                  {pool.symbol}
+                </div>
               </div>
             </div>
+            {maxAmount && (
+              <div className="flex gap-4 pt-1">
+                <span className="text-[9px] text-foreground/30">
+                  {isSupply ? "Max supply" : "Max borrow (80% LTV)"}:{" "}
+                  <span className="text-foreground/50 font-mono">{maxAmount} {pool.symbol}</span>
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Stats row */}

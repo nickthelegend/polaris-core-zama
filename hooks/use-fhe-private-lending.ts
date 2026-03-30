@@ -80,8 +80,7 @@ async function getFhevmInstance(): Promise<FhevmInstance> {
   // Try the Zama relayer SDK (production browser SDK) if available.
   // Falls back to a browser-safe mock for local Hardhat development.
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require('@zama-fhe/relayer-sdk');
+    const mod = await import('@zama-fhe/relayer-sdk');
     _fhevmInstance = await mod.createInstance();
   } catch {
     // No production SDK installed — use the mock instance for local dev.

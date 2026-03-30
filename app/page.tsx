@@ -10,14 +10,14 @@ import { TokenIcon } from "@/components/token-icon"
 import { useGlobalStats } from "@/hooks/use-global-stats"
 
 const BORROW_ASSETS = [
-  { symbol: "gUSD", color: "bg-purple-500" },
   { symbol: "USDC", color: "bg-blue-500" },
+  { symbol: "WETH", color: "bg-blue-400" },
   { symbol: "USDT", color: "bg-green-600" },
 ]
 const COLLATERAL_ASSETS = [
-  { symbol: "gETH", color: "bg-purple-700" },
   { symbol: "WETH", color: "bg-blue-400" },
   { symbol: "WBTC", color: "bg-orange-500" },
+  { symbol: "BNB",  color: "bg-yellow-500" },
 ]
 const TABS = ["Borrow", "Lend", "Swap"] as const
 type Tab = typeof TABS[number]
@@ -65,10 +65,10 @@ function PrivateActionWidget() {
   const [collateralAmount, setCollateralAmount] = useState("")
   const [maxRate, setMaxRate] = useState("10")
   const [duration, setDuration] = useState("30")
-  const [borrowAsset, setBorrowAsset] = useState("gUSD")
-  const [collateralAsset, setCollateralAsset] = useState("gETH")
+  const [borrowAsset, setBorrowAsset] = useState("USDC")
+  const [collateralAsset, setCollateralAsset] = useState("WETH")
   const [lendAmount, setLendAmount] = useState("")
-  const [lendAsset, setLendAsset] = useState("gUSD")
+  const [lendAsset, setLendAsset] = useState("USDC")
   const [minRate, setMinRate] = useState("5")
   const [lendDuration, setLendDuration] = useState("30")
 
@@ -172,7 +172,7 @@ function PrivateActionWidget() {
               <label className="text-xs text-foreground/40">From</label>
               <div className="flex items-center gap-3">
                 <input type="number" placeholder="0" className="flex-1 bg-transparent text-3xl font-light text-foreground/60 placeholder:text-foreground/20 focus:outline-none min-w-0" />
-                <TokenDropdown options={BORROW_ASSETS} value="gUSD" onChange={() => {}} />
+                <TokenDropdown options={BORROW_ASSETS} value="USDC" onChange={() => {}} />
               </div>
             </div>
             <div className="flex justify-center">
@@ -184,7 +184,7 @@ function PrivateActionWidget() {
               <label className="text-xs text-foreground/40">To</label>
               <div className="flex items-center gap-3">
                 <input type="number" placeholder="0" className="flex-1 bg-transparent text-3xl font-light text-foreground/60 placeholder:text-foreground/20 focus:outline-none min-w-0" />
-                <TokenDropdown options={COLLATERAL_ASSETS} value="gETH" onChange={() => {}} />
+                <TokenDropdown options={COLLATERAL_ASSETS} value="WETH" onChange={() => {}} />
               </div>
             </div>
             <button className="w-full py-4 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm transition-all">Swap</button>

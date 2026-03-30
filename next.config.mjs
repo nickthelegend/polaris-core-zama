@@ -43,6 +43,17 @@ const nextConfig = {
       crypto: false,
       buffer: require.resolve("buffer"),
     };
+
+    // Stub out React Native / non-browser transitive deps that can't be
+    // resolved in a web build. These are pulled in by @metamask/sdk (via
+    // RainbowKit), @privy-io/react-auth, and optionally @zama-fhe/relayer-sdk.
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@react-native-async-storage/async-storage': false,
+      '@farcaster/mini-app-solana': false,
+      '@zama-fhe/relayer-sdk': false,
+    };
+
     return config;
   },
 }
