@@ -112,7 +112,8 @@ export function LendingActionModal({
         ? CONTRACTS.SPOKES.SEPOLIA.PRIVATE_LENDING 
         : CONTRACTS.PRIVATE_LENDING;
         
-      const { handle, proof } = await encryptAmount(wei, addresses.PRIVATE_LENDING_POOL);
+      const targetAddress = isSupply ? addresses.PRIVATE_LENDING_POOL : addresses.PRIVATE_BORROW_MANAGER;
+      const { handle, proof } = await encryptAmount(wei, targetAddress);
       
       updateLog(1, { 
         status: "done", 
