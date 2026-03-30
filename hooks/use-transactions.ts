@@ -1,26 +1,26 @@
 import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 
-export type Position = {
-  type: "SUPPLY" | "BORROW";
-  symbol: string;
-  name: string;
+export type Transaction = {
+  type: "borrow" | "deposit" | "repay" | "supply" | "liquidation" | "swap";
+  title: string;
   amount: string;
-  apy: string;
-  value: string;
+  asset: string;
+  time: string;
+  status: string;
   txHash?: string;
-  timestamp?: number;
+  timestamp: number;
 };
 
-export function usePositions() {
+export function useTransactions() {
   const { address } = useAccount();
-  const [positions, setPositions] = useState<Position[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!address) {
-      setPositions([]);
+      setTransactions([]);
       setLoading(false);
       return;
     }
@@ -28,15 +28,15 @@ export function usePositions() {
     setLoading(true);
     setError(null);
     
-    fetch(`/api/positions?wallet=${address}`)
+    fetch(`/api/transactions?wallet=${address}`)
       .then((r) => {
-        if (!r.ok) throw new Error("Failed to fetch positions");
+        if (!r.ok) throw new Error("Failed to fetch transactions");
         return r.json();
       })
-      .then((data) => setPositions(Array.isArray(data) ? data : []))
+      .then((data) => setTransactions(Array.isArray(data) ? data : []))
       .catch((err) => setError(err.message ?? "Unknown error"))
       .finally(() => setLoading(false));
   }, [address]);
 
-  return { positions, loading, error };
+  return { transactions, loading, error };
 }

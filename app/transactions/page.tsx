@@ -12,16 +12,55 @@ import {
   ShieldAlert
 } from "lucide-react"
 import Link from "next/link"
+import { useTransactions } from "@/hooks/use-transactions"
+import { useAccount } from "wagmi"
+
+function PlusIcon(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M5 12h14" />
+      <path d="M12 5v14" />
+    </svg>
+  )
+}
+
+function getIcon(type: string) {
+  switch (type) {
+    case 'borrow': return <Zap className="w-5 h-5 text-red-400" />
+    case 'deposit': return <Database className="w-5 h-5 text-green-400" />
+    case 'repay': return <ArrowDown className="w-5 h-5 text-blue-400" />
+    case 'supply': return <PlusIcon className="w-5 h-5 text-primary" />
+    case 'liquidation': return <ShieldAlert className="w-5 h-5 text-yellow-500" />
+    case 'swap': return <ArrowUpRight className="w-5 h-5 text-purple-400" />
+    default: return <Database className="w-5 h-5 text-foreground/40" />
+  }
+}
+
+function formatTimeAgo(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000)
+  if (seconds < 60) return `${seconds}s ago`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
 
 export default function TransactionsPage() {
-  // Mock lending activities for the new protocol
-  const activities = [
-    { type: 'borrow', title: 'Confidential Borrow', amount: '2,500.00', asset: 'USDC', time: '2h ago', status: 'VERIFIED', icon: <Zap className="w-5 h-5 text-red-400" /> },
-    { type: 'deposit', title: 'Collateral Supply', amount: '1.50', asset: 'WETH', time: '5h ago', status: 'VERIFIED', icon: <Database className="w-5 h-5 text-green-400" /> },
-    { type: 'repay', title: 'Debt Repayment', amount: '500.00', asset: 'USDC', time: '1d ago', status: 'VERIFIED', icon: <ArrowDown className="w-5 h-5 text-blue-400" /> },
-    { type: 'supply', title: 'Liquidity Supply', amount: '10,000.00', asset: 'USDC', time: '2d ago', status: 'VERIFIED', icon: <PlusIcon className="w-5 h-5 text-primary" /> },
-    { type: 'liquidation', title: 'Health Audit', amount: '0.00', asset: 'N/A', time: '3d ago', status: 'AUDITED', icon: <ShieldAlert className="w-5 h-5 text-yellow-500" /> },
-  ]
+  const { address, isConnected } = useAccount()
+  const { transactions, loading, error } = useTransactions()
 
   return (
     <div className="flex flex-col gap-8 py-8 font-mono text-white">
@@ -67,32 +106,69 @@ export default function TransactionsPage() {
           </div>
           
           <div className="space-y-4">
-            {activities.map((t, i) => (
+            {!isConnected && (
+              <div className="bg-card/20 border border-border/40 rounded-2xl p-12 text-center">
+                <Database size={48} className="mx-auto text-foreground/20 mb-4" />
+                <p className="text-sm text-foreground/40">Connect your wallet to view transaction history</p>
+              </div>
+            )}
+            
+            {isConnected && loading && (
+              <div className="bg-card/20 border border-border/40 rounded-2xl p-12 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
+                <p className="text-sm text-foreground/40">Loading transactions...</p>
+              </div>
+            )}
+            
+            {isConnected && error && (
+              <div className="bg-card/20 border border-border/40 rounded-2xl p-12 text-center">
+                <p className="text-sm text-red-400">Error: {error}</p>
+              </div>
+            )}
+            
+            {isConnected && !loading && !error && transactions.length === 0 && (
+              <div className="bg-card/20 border border-border/40 rounded-2xl p-12 text-center">
+                <History size={48} className="mx-auto text-foreground/20 mb-4" />
+                <p className="text-sm text-foreground/40">No transactions found</p>
+                <p className="text-xs text-foreground/30 mt-2">Your transaction history will appear here</p>
+              </div>
+            )}
+            
+            {isConnected && !loading && !error && transactions.map((t, i) => (
               <div key={i} className="bg-card/20 border border-border/40 rounded-2xl p-6 flex items-center justify-between hover:bg-white/[0.04] transition-all group backdrop-blur-sm shadow-xl">
                 <div className="flex items-center gap-6">
                   <div className="size-14 rounded-2xl bg-white/5 border border-border/20 flex items-center justify-center group-hover:scale-110 transition-transform shadow-2xl">
-                    {t.icon}
+                    {getIcon(t.type)}
                   </div>
                   <div>
                     <div className="flex items-center gap-3">
                       <span className="text-white font-bold text-lg tracking-tight">{t.title}</span>
                       <span className="text-[9px] bg-primary/10 text-primary px-2 py-0.5 rounded border border-primary/20 font-black tracking-widest uppercase italic">
-                        FHE_VERIFIED
+                        {t.status}
                       </span>
                     </div>
                     <div className="flex items-center gap-4 mt-1.5 font-mono">
-                      <span className="text-[10px] text-foreground/40 uppercase font-black">{t.time}</span>
-                      <span className="text-[10px] text-foreground/20">|</span>
-                      <span className="text-[10px] text-primary/60 hover:text-primary flex items-center gap-1 font-bold underline cursor-pointer">
-                        LOG_AUTH_DATA_{i} <ExternalLink size={10} />
-                      </span>
+                      <span className="text-[10px] text-foreground/40 uppercase font-black">{formatTimeAgo(t.timestamp)}</span>
+                      {t.txHash && (
+                        <>
+                          <span className="text-[10px] text-foreground/20">|</span>
+                          <a 
+                            href={`https://sepolia.etherscan.io/tx/${t.txHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-primary/60 hover:text-primary flex items-center gap-1 font-bold underline"
+                          >
+                            TX_{t.txHash.slice(0, 6)} <ExternalLink size={10} />
+                          </a>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="flex items-center justify-end gap-2">
                     <span className="text-white font-black text-2xl tabular-nums tracking-tighter">
-                      {t.type === 'borrow' ? '-' : '+'}
+                      {t.type === 'borrow' || t.type === 'repay' ? '-' : '+'}
                       {t.amount}
                     </span>
                     <span className="text-white/30 text-[10px] font-black uppercase mt-1">{t.asset}</span>
@@ -143,25 +219,5 @@ export default function TransactionsPage() {
         </section>
       </div>
     </div>
-  )
-}
-
-function PlusIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M5 12h14" />
-      <path d="M12 5v14" />
-    </svg>
   )
 }

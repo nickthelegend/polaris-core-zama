@@ -3,18 +3,11 @@
 import { useState } from "react"
 import {
   ArrowDown, ShieldCheck, Lock, TrendingUp, Zap,
-  History, Target, ArrowUpRight, X, Info, ChevronDown, Check
+  History, Target, ArrowUpRight, X, Info, ChevronDown, Check, Database
 } from "lucide-react"
 import { TokenIcon } from "@/components/token-icon"
-
-type Position = {
-  type: "SUPPLY" | "BORROW"
-  symbol: string
-  name: string
-  amount: string
-  apy: string
-  value: string
-}
+import { usePositions, type Position } from "@/hooks/use-positions"
+import { useAccount } from "wagmi"
 
 // ── Manage Modal ──────────────────────────────────────────────────────────────
 function ManageModal({ pos, onClose }: { pos: Position; onClose: () => void }) {
@@ -137,12 +130,13 @@ function ManageModal({ pos, onClose }: { pos: Position; onClose: () => void }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function PositionsPage() {
+  const { address, isConnected } = useAccount()
+  const { positions, loading, error } = usePositions()
   const [managingPos, setManagingPos] = useState<Position | null>(null)
 
-  const positions: Position[] = [
-    { type: "SUPPLY", symbol: "USDC", name: "USD Coin",      amount: "••••••", apy: "4.5%", value: "Encrypted" },
-    { type: "BORROW", symbol: "WETH", name: "Wrapped Ether", amount: "••••••", apy: "6.2%", value: "Encrypted" },
-  ]
+  // Calculate totals
+  const totalSupply = positions.filter(p => p.type === "SUPPLY").length
+  const totalBorrow = positions.filter(p => p.type === "BORROW").length
 
   return (
     <div className="flex-1 flex flex-col py-8 gap-8 w-full font-mono text-white">
@@ -189,7 +183,35 @@ export default function PositionsPage() {
           <div className="col-span-2 text-right">Control</div>
         </div>
         <div className="divide-y divide-border/10">
-          {positions.map((pos) => (
+          {!isConnected && (
+            <div className="px-8 py-12 text-center">
+              <Lock size={48} className="mx-auto text-foreground/20 mb-4" />
+              <p className="text-sm text-foreground/40">Connect your wallet to view positions</p>
+            </div>
+          )}
+          
+          {isConnected && loading && (
+            <div className="px-8 py-12 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
+              <p className="text-sm text-foreground/40">Loading positions...</p>
+            </div>
+          )}
+          
+          {isConnected && error && (
+            <div className="px-8 py-12 text-center">
+              <p className="text-sm text-red-400">Error: {error}</p>
+            </div>
+          )}
+          
+          {isConnected && !loading && !error && positions.length === 0 && (
+            <div className="px-8 py-12 text-center">
+              <Database size={48} className="mx-auto text-foreground/20 mb-4" />
+              <p className="text-sm text-foreground/40">No positions found</p>
+              <p className="text-xs text-foreground/30 mt-2">Supply or borrow assets to get started</p>
+            </div>
+          )}
+          
+          {isConnected && !loading && !error && positions.map((pos) => (
             <div key={`${pos.type}-${pos.symbol}`} className="grid grid-cols-12 px-8 py-8 items-center hover:bg-primary/5 transition-colors group cursor-pointer"
               onClick={() => setManagingPos(pos)}>
               <div className="col-span-4 flex items-center gap-5">
