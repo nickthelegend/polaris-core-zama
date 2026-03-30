@@ -225,8 +225,7 @@ export default function Page() {
     statsLoading || statsError || val === undefined ? "—" : `${val}${suffix}`
 
   const { 
-    decryptSupplied, 
-    decryptDebt, 
+    decryptAllPositions, 
     suppliedBalance, 
     debtBalance, 
     loading: fheLoading 
@@ -236,17 +235,19 @@ export default function Page() {
 
     const handleDecrypt = async () => {
         try {
-            const usdcPool = CONTRACTS.PRIVATE_LENDING.PRIVATE_LENDING_POOL
-            const usdcBorrow = CONTRACTS.PRIVATE_LENDING.PRIVATE_BORROW_MANAGER
+            const addresses = CONTRACTS.PRIVATE_LENDING;
             
-            toast.info("Requesting decryption key via EIP-712...")
-            await decryptSupplied(usdcPool)
-            await decryptDebt(usdcBorrow)
+            toast.info("Requesting secure decryption via EIP-712...")
+            await decryptAllPositions(
+              addresses.PRIVATE_LENDING_POOL,
+              addresses.PRIVATE_BORROW_MANAGER,
+              addresses.PRIVATE_COLLATERAL_VAULT
+            )
             setHasDecrypted(true)
-            toast.success("Positions decrypted successfully")
+            toast.success("Confidential positions revealed")
         } catch (err) {
             console.error("Decryption failed:", err)
-            toast.error("Decryption failed")
+            toast.error("Decryption failed - please try again")
         }
     }
 
