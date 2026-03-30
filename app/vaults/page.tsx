@@ -16,77 +16,87 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { useAccount } from "wagmi"
-import { toast } from "react-toastify"
+import { toast } from "sonner"
+import { LendingActionModal, ModalMode } from "@/components/lending-action-modal"
+import { useFhePrivateLending } from "@/hooks/use-fhe-private-lending"
 
 const VAULTS = [
     {
         id: "v1",
-        name: "USDCx/GAS",
-        platform: "INITIA_DEX",
-        type: "LP VAULT",
-        category: "STABLECOIN",
-        apy: "12.40%",
-        daily: "0.034%",
-        description: "USDC-GAS liquidity pool on Initia. Auto-compounds rewards.",
+        name: "WETH VAULT",
+        platform: "POLARIS",
+        type: "LIQUIDITY",
+        category: "BLUE_CHIP",
+        symbol: "WETH",
+        apy: "4.20%",
+        daily: "0.011%",
+        description: "Confidential WETH vault. Earn yield while keeping your balance private via FHE.",
         risk: "LOW",
-        chain: "INITIA",
+        chain: "SEPOLIA",
         color: "blue"
     },
     {
         id: "v2",
-        name: "USDCx LENDING",
-        platform: "ECHELON",
-        type: "LENDING",
-        category: "STABLECOIN",
-        apy: "8.20%",
-        daily: "0.022%",
-        description: "Supply USDCx to Echelon lending market. Earn borrower interest.",
+        name: "BNB VAULT",
+        platform: "POLARIS",
+        type: "LIQUIDITY",
+        category: "BLUE_CHIP",
+        symbol: "BNB",
+        apy: "5.80%",
+        daily: "0.015%",
+        description: "High-yield BNB vault with FHE-enabled privacy for your positions.",
         risk: "LOW",
-        chain: "INITIA",
-        color: "green"
+        chain: "SEPOLIA",
+        color: "yellow"
     },
     {
         id: "v3",
-        name: "USDCx/USDM",
-        platform: "STABLE_SWAP",
-        type: "STABLE LP",
+        name: "USDC VAULT",
+        platform: "POLARIS",
+        type: "LIQUIDITY",
         category: "STABLECOIN",
-        apy: "9.80%",
-        daily: "0.027%",
-        description: "Stablecoin LP on Initia. Minimal impermanent loss. Auto-compounds.",
+        symbol: "USDC",
+        apy: "8.50%",
+        daily: "0.023%",
+        description: "Private USDC stablecoin vault. Optimized for lending yield and privacy.",
         risk: "VERY LOW",
-        chain: "INITIA",
-        color: "purple"
+        chain: "SEPOLIA",
+        color: "blue"
     },
     {
         id: "v4",
-        name: "INIT STAKING",
-        platform: "INITIA",
-        type: "SINGLE ASSET",
-        category: "BLUE_CHIP",
-        apy: "3.80%",
-        daily: "0.010%",
-        description: "Native INIT staking yield via Polaris strategy.",
+        name: "USDT VAULT",
+        platform: "POLARIS",
+        type: "LIQUIDITY",
+        category: "STABLECOIN",
+        symbol: "USDT",
+        apy: "8.20%",
+        daily: "0.022%",
+        description: "Secure USDT vault with Zama FHEVM encryption for all user balances.",
         risk: "VERY LOW",
-        chain: "INITIA",
-        color: "orange"
+        chain: "SEPOLIA",
+        color: "green"
     }
 ]
 
 export default function VaultsPage() {
+    const [selectedVault, setSelectedVault] = useState<typeof VAULTS[0] | null>(null)
+    const [modalMode, setModalMode] = useState<ModalMode>("supply")
     const [filter, setFilter] = useState("ALL_VAULTS")
     const { isConnected } = useAccount()
+    const { collateralBalance, loading: fheLoading } = useFhePrivateLending()
 
     const filteredVaults = filter === "ALL_VAULTS"
         ? VAULTS
         : VAULTS.filter(v => v.category === filter || v.type.includes(filter.replace("_VAULTS", "")))
 
-    const handleAction = (type: string) => {
+    const handleAction = (vault: typeof VAULTS[0], mode: ModalMode) => {
         if (!isConnected) {
             toast.info("Please connect your Polaris wallet first.")
             return
         }
-        toast.success(`COMING_SOON // ${type} integration for Initia in progress`)
+        setSelectedVault(vault)
+        setModalMode(mode)
     }
 
     return (
@@ -104,7 +114,7 @@ export default function VaultsPage() {
                     <span className="text-[10px] text-white/40 uppercase tracking-widest">Protocol_Metrics</span>
                     <span className="text-primary text-[10px] flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
-                        SYSTEM_READY // INITIA_CONNECTED
+                        SYSTEM_READY // SEPOLIA_CONNECTED
                     </span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-white/10 text-white">
@@ -207,15 +217,13 @@ export default function VaultsPage() {
 
                             {/* Actions */}
                                 <button 
-                                    onClick={() => handleAction("DEPOSIT")}
-                                    aria-label={`Deposit into ${vault.name}`}
+                                    onClick={() => handleAction(vault, "supply")}
                                     className="bg-primary hover:bg-primary/80 text-primary-foreground py-2.5 rounded-sm font-black text-[10px] uppercase transition-all active:scale-95"
                                 >
                                     Deposit
                                 </button>
                                 <button 
-                                    onClick={() => handleAction("WITHDRAW")}
-                                    aria-label={`Withdraw from ${vault.name}`}
+                                    onClick={() => handleAction(vault, "supply")} // Withdraw logic can be added to modal or separate modal
                                     className="bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white py-2.5 rounded-sm font-bold text-[10px] uppercase transition-all active:scale-95"
                                 >
                                     Withdraw
@@ -264,6 +272,19 @@ export default function VaultsPage() {
                     </div>
                 </div>
             </div>
+            {/* Modal Overlay */}
+            {selectedVault && (
+                <LendingActionModal
+                    mode={modalMode}
+                    pool={{
+                        symbol: selectedVault.symbol,
+                        name: selectedVault.name,
+                        supplyApy: selectedVault.apy,
+                        borrowApy: "0%" // Vaults don't have borrow APY usually
+                    }}
+                    onClose={() => setSelectedVault(null)}
+                />
+            )}
         </div>
     )
 }

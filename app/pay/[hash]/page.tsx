@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { ethers } from "ethers"
-import { useObolus } from "@/hooks/use-obolus"
-import { useObolusWallet } from "@/lib/hooks/useObolusWallet"
+import { usePolarisPay } from "@/hooks/use-polaris-pay"
+import { useAccount } from "wagmi"
 import { ShieldCheck, Zap, AlertCircle, CheckCircle2, Loader2, ArrowLeft } from "lucide-react"
 import { toast } from "react-toastify"
 import Link from "next/link"
-import { ABIS } from "@/lib/contracts"
+import { ABIS, NETWORKS } from "@/lib/contracts"
+import { syncTransaction } from "@/lib/sync-utils"
 
 export default function CheckoutPage() {
     const params = useParams()
@@ -20,9 +21,9 @@ export default function CheckoutPage() {
         getMasterConfig,
         getCreditLimit,
         payWithCredit,
-        loading: obolusLoading
-    } = useObolus()
-    const { connect } = useObolusWallet()
+        loading: polarisLoading
+    } = usePolarisPay()
+    const { isConnected } = useAccount()
 
     const [bill, setBill] = useState<any>(null)
     const [fetching, setFetching] = useState(true)
@@ -78,56 +79,14 @@ export default function CheckoutPage() {
             const { config } = getMasterConfig() as any;
             const usdcAddress = config.USDC;
 
-            // In Cardano Native project, the original EVM wallet logic might need 
-            // a different implementation. For now, we'll try to use window.ethereum 
-            // if available, as a fallback for the EVM settlement part.
-            if (!(window as any).ethereum) throw new Error("EVM wallet (like Metamask) required for settlement layer.");
-
             // 1. CREDIT_AUTHORIZATION (BNPL)
-            // This records the debt on the Hub
-            console.log("[OBOLUS] Step 1: Authorizing Credit via MerchantRouter...");
-            const routerReceipt = await payWithCredit(targetAddress, bill.amount.toString(), usdcAddress);
-            console.log("[OBOLUS] Credit Authorized:", routerReceipt.hash);
+            // This records the debt on the Hub (Sepolia)
+            console.log("[POLARIS] Authorizing Credit via MerchantRouter...");
+            const receipt = await payWithCredit(targetAddress, bill.amount.toString(), usdcAddress);
+            const finalTxHash = receipt.hash;
+            console.log("[POLARIS] Credit Authorized:", finalTxHash);
 
-            // 2. PROTOCOL_SETTLEMENT (Simulating payout from Pool to User)
-            const provider = new ethers.BrowserProvider((window as any).ethereum);
-            const signer = await provider.getSigner();
-            const usdc = new ethers.Contract(usdcAddress, ABIS.MockERC20, signer);
-
-            console.log("[OBOLUS] Step 2: Protocol releasing funds (Payout)...");
-            const decimals = 18;
-            const amountWei = ethers.parseUnits(bill.amount.toString(), decimals);
-            const mintTx = await usdc.mint(address, amountWei);
-            await mintTx.wait();
-
-            // 3. MERCHANT_ESCROW_PAYMENT
-            let finalTxHash = routerReceipt.hash;
-
-            if (bill.merchant?.escrow_contract) {
-                console.log("[OBOLUS] Step 3: Settling to Merchant Escrow...");
-
-                // Approve escrow to take the minted funds
-                const approveTx = await usdc.approve(bill.merchant.escrow_contract, amountWei);
-                await approveTx.wait();
-
-                // Call settlePayment
-                const escrow = new ethers.Contract(bill.merchant.escrow_contract, ABIS.ObolusMerchantEscrow.abi || ABIS.ObolusMerchantEscrow, signer);
-                const settleTx = await escrow.settlePayment(
-                    amountWei,
-                    bill.hash.slice(0, 10),
-                    bill.description || "Obolus Settlement"
-                );
-                const settleReceipt = await settleTx.wait();
-                finalTxHash = settleReceipt.hash;
-                console.log("[OBOLUS] Escrow Settlement Complete:", finalTxHash);
-            } else {
-                console.log("[OBOLUS] Step 3: Direct wallet transfer (No Escrow)...");
-                const transferTx = await usdc.transfer(targetAddress, amountWei);
-                const transferReceipt = await transferTx.wait();
-                finalTxHash = transferReceipt.hash;
-            }
-
-            // 4. BACKEND_SYNC
+            // 2. BACKEND_SYNC
             const res = await fetch("/api/bills/pay", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -137,12 +96,24 @@ export default function CheckoutPage() {
                     userAddress: address
                 })
             })
+            
+            // Log to Transaction Ledger
+            await syncTransaction({
+                userAddress: address || "",
+                type: "repay",
+                title: `Checkout: Paid ${bill.merchant?.name}`,
+                amount: bill.amount.toString(),
+                asset: "USDC",
+                txHash: finalTxHash,
+                status: "SETTLED"
+            });
+
             const result = await res.json()
 
             if (result.success) {
                 setTxHash(finalTxHash)
                 setSuccess(true)
-                toast.success("Settlement Finalized on Creditcoin Hub!")
+                toast.success("Payment Finalized on Polaris Hub!")
             } else {
                 throw new Error(result.error || "Platform sync failed")
             }
@@ -172,7 +143,7 @@ export default function CheckoutPage() {
                     <p className="text-[10px] text-white/40 uppercase">This payment link may be expired or invalid.</p>
                 </div>
                 <Link href="/" className="bg-white/5 px-6 py-2 rounded border border-white/10 text-[10px] font-bold uppercase hover:bg-white/10 transition-all">
-                    Return to Obolus
+                    Return to Polaris
                 </Link>
             </div>
         )
@@ -186,7 +157,7 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex flex-col gap-1">
                     <h1 className="text-2xl font-black uppercase tracking-tighter">Payment_Settled</h1>
-                    <p className="text-[10px] text-white/40 uppercase">Your transaction has been verified on Creditcoin Hub.</p>
+                    <p className="text-[10px] text-white/40 uppercase">Your transaction has been verified on Polaris Hub.</p>
                 </div>
 
                 <div className="w-full bg-white/5 border border-white/10 p-4 rounded flex flex-col gap-3">
@@ -202,11 +173,11 @@ export default function CheckoutPage() {
 
                 <div className="flex flex-col w-full gap-2">
                     <a
-                        href={`https://explorer.usc-testnet2.creditcoin.network/tx/${txHash}`}
+                        href={`${NETWORKS.SEPOLIA.explorer}/tx/${txHash}`}
                         target="_blank"
                         className="w-full bg-primary py-3 rounded text-[10px] font-black uppercase text-black hover:opacity-90 transition-all"
                     >
-                        View Hub Explorer
+                        View Sepolia Explorer
                     </a>
                     {bill.metadata?.redirect_url ? (
                         <a
@@ -258,7 +229,7 @@ export default function CheckoutPage() {
                     <div className="flex flex-col gap-2">
                         <span className="text-[10px] text-white/40 uppercase font-bold tracking-widest italic">Description</span>
                         <p className="text-xs text-white/80 leading-relaxed font-medium">
-                            {bill.description || "Payment for digital assets via Obolus Protocol."}
+                            {bill.description || "Payment for digital assets via Polaris Protocol."}
                         </p>
                     </div>
 
@@ -266,7 +237,7 @@ export default function CheckoutPage() {
                         <div className="flex items-center gap-3">
                             <ShieldCheck className="w-5 h-5 text-primary" />
                             <div className="flex flex-col">
-                                <span className="text-[10px] font-bold text-white uppercase tracking-wide">Pay_Later_With_Obolus</span>
+                                <span className="text-[10px] font-bold text-white uppercase tracking-wide">Pay_Later_With_Polaris</span>
                                 <span className="text-[9px] text-primary font-bold uppercase tracking-widest">Available Credit: ${creditLimit}</span>
                             </div>
                         </div>
@@ -276,20 +247,20 @@ export default function CheckoutPage() {
                     <div className="flex flex-col gap-4">
                         <div className="flex flex-col gap-2">
                             <button
-                                onClick={authenticated ? handlePayment : () => connect("Nami")}
-                                disabled={paying || bill.status === 'paid'}
-                                className={`w-full py-4 rounded font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 ${paying || bill.status === 'paid' ? 'bg-zinc-800 text-white/20 cursor-not-allowed' : 'bg-primary text-black hover:scale-[1.02] shadow-[0_0_20px_-5px_rgba(var(--primary),0.5)]'
+                                onClick={handlePayment}
+                                disabled={paying || bill.status === 'paid' || !authenticated}
+                                className={`w-full py-4 rounded font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 ${paying || bill.status === 'paid' || !authenticated ? 'bg-zinc-800 text-white/20 cursor-not-allowed' : 'bg-primary text-black hover:scale-[1.02] shadow-[0_0_20px_-5px_rgba(var(--primary),0.5)]'
                                     }`}
                             >
                                 {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : authenticated ? <ShieldCheck className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
-                                {paying ? 'Authorizing...' : !authenticated ? 'Connect_Wallet_To_Pay' : bill.status === 'paid' ? 'Already_Settled' : 'Give_Consent_&_Pay'}
+                                {paying ? 'Authorizing...' : !authenticated ? 'Wallet_Needs_Link' : bill.status === 'paid' ? 'Already_Settled' : 'Give_Consent_&_Pay'}
                             </button>
                             <p className="text-[8px] text-center text-white/20 uppercase font-bold tracking-[0.1em] leading-relaxed">
-                                By clicking above, you authorize Obolus Protocol to reserve ${bill.amount} from your Creditcoin USC Hub credit limit for immediate settlement.
+                                By clicking above, you authorize Polaris Protocol to reserve ${bill.amount} from your credit limit for immediate settlement.
                             </p>
                         </div>
                         <p className="text-[9px] text-center text-white/20 uppercase font-bold tracking-widest flex items-center justify-center gap-2">
-                            Secured by Creditcoin-Native Verification
+                            Secured by Polaris ZK-Verification
                         </p>
                     </div>
                 </div>

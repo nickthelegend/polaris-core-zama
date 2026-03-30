@@ -20,8 +20,9 @@ export async function getZamaInstance() {
       // Using public Sepolia RPC as fallback, ideally should come from config
       const instance = await createInstance({ 
         ...SepoliaConfig, 
-        network: "https://ethereum-sepolia-rpc.publicnode.com" 
+        network: process.env.VITE_NETWORK_URL || "https://ethereum-sepolia-rpc.publicnode.com" 
       })
+
       
       console.log("[FHEVM] Instance created successfully")
       return instance

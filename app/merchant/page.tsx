@@ -1,8 +1,7 @@
 "use client"
 
 import { ConnectGate } from "@/components/connect-gate"
-import { useObolus } from "@/hooks/use-obolus"
-import { CONTRACTS } from "@/lib/contracts"
+import { usePolarisPay } from "@/hooks/use-polaris-pay"
 import { useState, useEffect } from "react"
 import { toast } from "react-toastify"
 import {
@@ -19,20 +18,23 @@ import {
     RefreshCw
 } from "lucide-react"
 import QRCode from "qrcode"
+import { syncTransaction } from "@/lib/sync-utils"
+import { ethers } from "ethers"
+import { ABIS, CONTRACTS, NETWORKS } from "@/lib/contracts"
 
 export default function MerchantDashboard() {
-    const { address, authenticated, loading } = useObolus();
+    const { address, authenticated, loading, requestWithdrawal, getContract } = usePolarisPay();
     const [qrDataUrl, setQrDataUrl] = useState<string>("");
     const [amount, setAmount] = useState("10");
     const [activeTab, setActiveTab] = useState<"terminal" | "transactions">("terminal");
 
-    // Mock merchant data (In prod, fetch from MerchantRouter.merchantBalances)
-    const [balance, setBalance] = useState("450.00");
+    const [balance, setBalance] = useState("0");
+    const [withdrawing, setWithdrawing] = useState(false);
 
     const generatePaymentQr = async () => {
         try {
-            // Standardizing the payment protocol: obolus://pay?merchant=ADDR&amount=VAL&token=ADDR
-            const protocol = `obolus://pay?merchant=${address}&amount=${amount}&token=${CONTRACTS.SOURCE.USDC}`;
+            // Standardizing the payment protocol: polaris://pay?merchant=ADDR&amount=VAL&token=ADDR
+            const protocol = `polaris://pay?merchant=${address}&amount=${amount}&token=${CONTRACTS.MASTER.USDC}`;
             const url = await QRCode.toDataURL(protocol, {
                 width: 400,
                 margin: 2,
@@ -48,15 +50,55 @@ export default function MerchantDashboard() {
         }
     };
 
+    const fetchBalance = async () => {
+        if (!address) return;
+        try {
+            const { config, id } = (usePolarisPay() as any).getMasterConfig();
+            const router = await getContract(config.MERCHANT_ROUTER, ABIS.MerchantRouter, id, false);
+            const bal = await router.merchantBalances(address, CONTRACTS.MASTER.USDC);
+            setBalance(ethers.formatUnits(bal, 18));
+        } catch (e) {
+            console.error("Failed to fetch merchant balance", e);
+        }
+    };
+
     useEffect(() => {
-        if (address) generatePaymentQr();
+        if (address) {
+            generatePaymentQr();
+            fetchBalance();
+        }
     }, [address, amount]);
+
+    const handleWithdraw = async () => {
+        if (!address || parseFloat(balance) <= 0) return;
+        setWithdrawing(true);
+        try {
+            const hash = await requestWithdrawal(CONTRACTS.MASTER.USDC, balance, 11155111); // Dest chain = Sepolia (demo)
+            toast.success("Settlement Initiated!");
+            
+            await syncTransaction({
+                userAddress: address,
+                type: "repay", // Using repay type for merchant withdraw in this demo ledger
+                title: `Merchant Settlement: ${balance} USDC`,
+                amount: balance,
+                asset: "USDC",
+                txHash: hash,
+                status: "VERIFIED"
+            });
+
+            fetchBalance();
+        } catch (e: any) {
+            toast.error(e.message || "Settlement failed");
+        } finally {
+            setWithdrawing(false);
+        }
+    };
 
     return (
         <ConnectGate>
             <div className="flex-1 flex flex-col py-8 gap-6 w-full font-mono text-white">
                 <div className="flex flex-col gap-1">
-                    <span className="font-mono text-[10px] tracking-[0.4em] text-primary/60 uppercase">System Status // merchant_core_v1</span>
+                    <span className="font-mono text-[10px] tracking-[0.4em] text-primary/60 uppercase">System Status // polaris_core_v1</span>
                     <h1 className="text-white text-xl tracking-tighter font-bold uppercase underline decoration-primary/40 underline-offset-8">Merchant Acceptance Hub</h1>
                 </div>
 
@@ -68,9 +110,13 @@ export default function MerchantDashboard() {
                                 <span className="text-[10px] text-white/40 uppercase tracking-widest">Available_to_Withdraw</span>
                                 <span className="text-2xl font-black tracking-tighter text-white">${balance}</span>
                             </div>
-                            <button className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 py-2 rounded-sm text-[10px] font-bold uppercase transition-all flex items-center justify-center gap-2">
-                                <ArrowUpRight className="w-3 h-3" />
-                                Initiate_Settlement
+                            <button 
+                                onClick={handleWithdraw}
+                                disabled={withdrawing || parseFloat(balance) <= 0}
+                                className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 py-2 rounded-sm text-[10px] font-bold uppercase transition-all flex items-center justify-center gap-2 disabled:opacity-30"
+                            >
+                                {withdrawing ? <RefreshCw className="w-3 h-3 animate-spin" /> : <ArrowUpRight className="w-3 h-3" />}
+                                {withdrawing ? "Processing..." : "Initiate_Settlement"}
                             </button>
                         </div>
 
@@ -124,7 +170,7 @@ export default function MerchantDashboard() {
                                                 <span className="text-[10px] font-bold uppercase tracking-tighter">Verified Protocol Acceptance</span>
                                             </div>
                                             <p className="text-[11px] text-white/50 leading-relaxed font-mono">
-                                                By scanning this code, the customer authorizes a BNPL loan through Obolus Core. Funds are credited to your merchant balance immediately upon customer confirmation.
+                                                By scanning this code, the customer authorizes a BNPL loan through Polaris Protocol. Funds are credited to your merchant balance immediately upon customer confirmation.
                                             </p>
                                         </div>
                                     </div>

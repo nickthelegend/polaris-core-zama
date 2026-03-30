@@ -1,21 +1,24 @@
-﻿"use client"
+"use client"
 
 import { useState, useRef, useEffect } from "react"
 import { ChevronDown, Check, Info, ShieldAlert, ChevronRight, Lock, Loader2 } from "lucide-react"
 import { TokenIcon } from "@/components/token-icon"
+import { useAccount } from "wagmi"
 import { useFhePrivateLending } from "@/hooks/use-fhe-private-lending"
 import { usePolaris } from "@/hooks/use-polaris"
 import { CONTRACTS, NETWORKS } from "@/lib/contracts"
+import { parseUnits } from "viem"
+import { syncTransaction, syncPosition } from "@/lib/sync-utils"
 
 const BORROW_ASSETS = [
-  { symbol: "gUSD", color: "bg-purple-500" },
   { symbol: "USDC", color: "bg-blue-500" },
   { symbol: "USDT", color: "bg-green-600" },
+  { symbol: "BNB", color: "bg-yellow-500" },
 ]
 const COLLATERAL_ASSETS = [
-  { symbol: "gETH", color: "bg-purple-700" },
   { symbol: "WETH", color: "bg-blue-400" },
   { symbol: "WBTC", color: "bg-orange-500" },
+  { symbol: "USDC", color: "bg-blue-500" },
 ]
 
 function TokenDropdown({ options, value, onChange }: {
@@ -60,14 +63,15 @@ export default function BorrowPage() {
   const [collateralAmount, setCollateralAmount] = useState("")
   const [maxRate, setMaxRate] = useState("10")
   const [duration, setDuration] = useState("30")
-  const [borrowAsset, setBorrowAsset] = useState("gUSD")
-  const [collateralAsset, setCollateralAsset] = useState("gETH")
+  const [borrowAsset, setBorrowAsset] = useState("USDC")
+  const [collateralAsset, setCollateralAsset] = useState("WETH")
   const [txHash, setTxHash] = useState<string | null>(null)
   const [txError, setTxError] = useState<string | null>(null)
   const [decryptingBalances, setDecryptingBalances] = useState(false)
 
   const { borrow, depositCollateral, loading, error, debtBalance, collateralBalance, decryptCollateral, decryptDebt } = useFhePrivateLending()
-  const { address, chainId } = usePolaris()
+  const { address } = useAccount()
+  const { chainId } = usePolaris()
 
   // Resolve contract addresses for the connected network — Requirements 8.1
   const getAddresses = () => {
@@ -92,17 +96,62 @@ export default function BorrowPage() {
   const handleSubmit = async () => {
     setTxError(null)
     setTxHash(null)
+    const { TOKENS } = await import("@/config/tokens")
+    
     try {
       // First deposit collateral if provided
       if (collateralAmount && parseFloat(collateralAmount) > 0) {
-        const collateralWei = BigInt(Math.floor(parseFloat(collateralAmount) * 1e9)) * BigInt(1e9)
-        await depositCollateral(collateralWei)
+        const token = TOKENS[collateralAsset]
+        const decimals = token?.decimals || 18
+        const collateralWei = parseUnits(collateralAmount, decimals)
+        const hash = await depositCollateral(collateralWei)
+        setTxHash(hash)
+
+        if (address) {
+          await syncTransaction({
+            userAddress: address,
+            type: "deposit",
+            title: `Deposited ${collateralAmount} ${collateralAsset}`,
+            amount: collateralAmount,
+            asset: collateralAsset,
+            txHash: hash,
+            status: "VERIFIED"
+          });
+          await syncPosition({
+            walletAddress: address,
+            type: "SUPPLY",
+            symbol: collateralAsset,
+            entryAmount: parseFloat(collateralAmount),
+            txHash: hash
+          });
+        }
       }
       // Then borrow
       if (borrowAmount && parseFloat(borrowAmount) > 0) {
-        const borrowWei = BigInt(Math.floor(parseFloat(borrowAmount) * 1e9)) * BigInt(1e9)
+        const token = TOKENS[borrowAsset]
+        const decimals = token?.decimals || 18
+        const borrowWei = parseUnits(borrowAmount, decimals)
         const hash = await borrow(borrowWei, borrowAsset)
         setTxHash(hash)
+
+        if (address) {
+          await syncTransaction({
+            userAddress: address,
+            type: "borrow",
+            title: `Borrowed ${borrowAmount} ${borrowAsset}`,
+            amount: borrowAmount,
+            asset: borrowAsset,
+            txHash: hash,
+            status: "VERIFIED"
+          });
+          await syncPosition({
+            walletAddress: address,
+            type: "BORROW",
+            symbol: borrowAsset,
+            entryAmount: parseFloat(borrowAmount),
+            txHash: hash
+          });
+        }
       }
     } catch (err: unknown) {
       setTxError(err instanceof Error ? err.message : String(err))

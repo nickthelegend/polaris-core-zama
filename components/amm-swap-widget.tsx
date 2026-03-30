@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { AMM_DEPLOYMENTS, ERC20_ABI, AMM_ABI } from "@/lib/amm-contracts"
 import { useFhePrivateSwap } from "@/hooks/use-fhe-private-swap"
 import { CONTRACTS } from "@/lib/contracts"
+import { syncTransaction, syncPosition } from "@/lib/sync-utils"
 import { Shield, ShieldOff, Lock } from "lucide-react"
 
 const TOKENS = [
@@ -101,6 +102,27 @@ export function AMMSwapWidget() {
     hash: swapHash,
   })
 
+  useEffect(() => {
+    if (swapHash && address) {
+      syncTransaction({
+        userAddress: address,
+        type: "swap",
+        title: `Swapped ${fromAmount} ${fromToken.symbol} → ${toToken.symbol}`,
+        amount: fromAmount,
+        asset: fromToken.symbol,
+        txHash: swapHash,
+        status: "VERIFIED"
+      });
+      syncPosition({
+        walletAddress: address,
+        type: "SUPPLY",
+        symbol: fromToken.symbol,
+        entryAmount: -parseFloat(fromAmount),
+        txHash: swapHash
+      });
+    }
+  }, [swapHash, address, fromAmount, fromToken.symbol, toToken.symbol]);
+
   const handleApprove = async () => {
     if (!poolAddress || !fromAmount) return
     
@@ -136,13 +158,29 @@ export function AMMSwapWidget() {
           return
         }
 
-        // Logic: Swap from current encrypted balance to target token
-        // In this demo, we use swapEncrypted. 
-        // User might need to deposit first if balance is 0.
-        // For simplicity in UI: we'll call swapEncrypted directly.
         const hash = await swapEncrypted(swapContract, amountWei, toToken.address)
         toast.success("Confidential Swap submitted!")
         console.log("FHE Swap Hash:", hash)
+
+        if (address) {
+          await syncTransaction({
+            userAddress: address,
+            type: "swap",
+            title: `Swapped ${fromAmount} ${fromToken.symbol} → ${toToken.symbol}`,
+            amount: fromAmount,
+            asset: fromToken.symbol,
+            txHash: hash,
+            status: "VERIFIED"
+          });
+
+          await syncPosition({
+            walletAddress: address,
+            type: "SUPPLY",
+            symbol: fromToken.symbol,
+            entryAmount: -parseFloat(fromAmount),
+            txHash: hash
+          });
+        }
       } catch (error: any) {
         console.error("FHE Swap error:", error)
         toast.error(error?.message || "Confidential swap failed")

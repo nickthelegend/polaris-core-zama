@@ -11,14 +11,14 @@ import { useGlobalStats } from "@/hooks/use-global-stats"
 import { AMMSwapWidget } from "@/components/amm-swap-widget"
 import { useFhePrivateLending } from "@/hooks/use-fhe-private-lending"
 import { CONTRACTS } from "@/lib/contracts"
-import { formatUnits } from "viem"
+import { formatUnits, parseUnits } from "viem"
 import { toast } from "sonner"
 import { Shield, Eye, Lock } from "lucide-react"
 
 const BORROW_ASSETS = [
   { symbol: "USDC", color: "bg-blue-500" },
-  { symbol: "WETH", color: "bg-blue-400" },
   { symbol: "USDT", color: "bg-green-600" },
+  { symbol: "BNB",  color: "bg-yellow-500" },
 ]
 const COLLATERAL_ASSETS = [
   { symbol: "WETH", color: "bg-blue-400" },
@@ -80,27 +80,33 @@ function PrivateActionWidget() {
 
   const { supply, borrow, loading } = useFhePrivateLending()
 
-  const handleBorrow = async () => {
-    if (!borrowAmount) return
-    try {
-      const amount = BigInt(Math.floor(parseFloat(borrowAmount) * 1e6)) * BigInt(1e12)
-      await borrow(amount, borrowAsset)
-      toast.success(`Confidential borrow of ${borrowAmount} ${borrowAsset} initiated`)
-    } catch (err: any) {
-      toast.error(err.message || "Borrow failed")
+    const handleBorrow = async () => {
+        if (!borrowAmount) return
+        const { TOKENS } = await import("@/config/tokens")
+        try {
+            const token = TOKENS[borrowAsset]
+            const decimals = token?.decimals || 18
+            const amount = parseUnits(borrowAmount, decimals)
+            await borrow(amount, borrowAsset)
+            toast.success(`Confidential borrow of ${borrowAmount} ${borrowAsset} initiated`)
+        } catch (err: any) {
+            toast.error(err.message || "Borrow failed")
+        }
     }
-  }
 
-  const handleLend = async () => {
-    if (!lendAmount) return
-    try {
-      const amount = BigInt(Math.floor(parseFloat(lendAmount) * 1e6)) * BigInt(1e12)
-      await supply(amount, lendAsset)
-      toast.success(`Confidential supply of ${lendAmount} ${lendAsset} initiated`)
-    } catch (err: any) {
-      toast.error(err.message || "Supply failed")
+    const handleLend = async () => {
+        if (!lendAmount) return
+        const { TOKENS } = await import("@/config/tokens")
+        try {
+            const token = TOKENS[lendAsset]
+            const decimals = token?.decimals || 18
+            const amount = parseUnits(lendAmount, decimals)
+            await supply(amount, lendAsset)
+            toast.success(`Confidential supply of ${lendAmount} ${lendAsset} initiated`)
+        } catch (err: any) {
+            toast.error(err.message || "Supply failed")
+        }
     }
-  }
 
   return (
     <div className="bg-[#0d0f14] border border-border/30 rounded-3xl overflow-hidden">
@@ -228,22 +234,21 @@ export default function Page() {
 
   const [hasDecrypted, setHasDecrypted] = useState(false)
 
-  const handleDecrypt = async () => {
-    try {
-      // For the demo, we decrypt USDC pool balances
-      const usdcPool = CONTRACTS.SPOKES.SEPOLIA.PRIVATE_LENDING.PRIVATE_LENDING_POOL
-      const usdcBorrow = CONTRACTS.SPOKES.SEPOLIA.PRIVATE_LENDING.PRIVATE_BORROW_MANAGER
-      
-      toast.info("Requesting decryption key via EIP-712...")
-      await decryptSupplied(usdcPool)
-      await decryptDebt(usdcBorrow)
-      setHasDecrypted(true)
-      toast.success("Positions decrypted successfully")
-    } catch (err) {
-      console.error("Decryption failed:", err)
-      toast.error("Decryption failed")
+    const handleDecrypt = async () => {
+        try {
+            const usdcPool = CONTRACTS.PRIVATE_LENDING.PRIVATE_LENDING_POOL
+            const usdcBorrow = CONTRACTS.PRIVATE_LENDING.PRIVATE_BORROW_MANAGER
+            
+            toast.info("Requesting decryption key via EIP-712...")
+            await decryptSupplied(usdcPool)
+            await decryptDebt(usdcBorrow)
+            setHasDecrypted(true)
+            toast.success("Positions decrypted successfully")
+        } catch (err) {
+            console.error("Decryption failed:", err)
+            toast.error("Decryption failed")
+        }
     }
-  }
 
   const statCards = [
     {

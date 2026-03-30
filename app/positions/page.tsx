@@ -3,26 +3,78 @@
 import { useState } from "react"
 import {
   ArrowDown, ShieldCheck, Lock, TrendingUp, Zap,
-  History, Target, ArrowUpRight, X, Info, ChevronDown, Check, Database
+  History, Target, ArrowUpRight, X, Info, ChevronDown, Check, Database, Loader2
 } from "lucide-react"
 import { TokenIcon } from "@/components/token-icon"
 import { usePositions, type Position } from "@/hooks/use-positions"
 import { useAccount } from "wagmi"
+import { useFhePrivateLending } from "@/hooks/use-fhe-private-lending"
+import { parseUnits } from "viem"
+import { toast } from "sonner"
+import { syncTransaction, syncPosition } from "@/lib/sync-utils"
 
 // ── Manage Modal ──────────────────────────────────────────────────────────────
 function ManageModal({ pos, onClose }: { pos: Position; onClose: () => void }) {
   const isSupply = pos.type === "SUPPLY"
   const [tab, setTab] = useState<"add" | "withdraw">(isSupply ? "add" : "repay" as any)
   const [amount, setAmount] = useState("")
+  const { address } = useAccount()
+  const { depositCollateral, withdrawCollateral, borrow, repay, loading } = useFhePrivateLending()
 
   const supplyTabs = [
     { key: "add",      label: isSupply ? "Supply More" : "Borrow More" },
     { key: "withdraw", label: isSupply ? "Withdraw"    : "Repay"       },
   ] as const
 
+  const handleAction = async () => {
+    if (!amount) return
+    const { TOKENS } = await import("@/config/tokens")
+    try {
+      const token = TOKENS[pos.symbol]
+      const decimals = token?.decimals || 18
+      const amountWei = parseUnits(amount, decimals)
+      
+      let hash = ""
+      if (isSupply) {
+        if (tab === "add") hash = await depositCollateral(amountWei)
+        else hash = await withdrawCollateral(amountWei)
+      } else {
+        if (tab === "add") hash = await borrow(amountWei, pos.symbol)
+        else hash = await repay(amountWei, pos.symbol)
+      }
+      
+      toast.success(`Transaction submitted: ${hash.slice(0, 10)}...`)
+
+      // Sync to Backend
+      if (address) {
+        await syncTransaction({
+          userAddress: address,
+          type: isSupply ? (tab === "add" ? "supply" : "deposit") : (tab === "add" ? "borrow" : "repay"),
+          title: `${tab === "add" ? (isSupply ? "Supplied" : "Borrowed") : (isSupply ? "Withdrew" : "Repaid")} ${amount} ${pos.symbol}`,
+          amount,
+          asset: pos.symbol,
+          txHash: hash,
+          status: "VERIFIED"
+        });
+
+        await syncPosition({
+          walletAddress: address,
+          type: isSupply ? "SUPPLY" : "BORROW",
+          symbol: pos.symbol,
+          entryAmount: tab === "add" ? parseFloat(amount) : -parseFloat(amount),
+          txHash: hash
+        });
+      }
+
+      onClose()
+    } catch (err: any) {
+      toast.error(err.message || "Action failed")
+    }
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <div
         className="relative w-full max-w-md bg-[#0d0f14] border border-border/40 rounded-3xl overflow-hidden shadow-2xl"
         onClick={e => e.stopPropagation()}
@@ -52,20 +104,6 @@ function ManageModal({ pos, onClose }: { pos: Position; onClose: () => void }) {
         </div>
 
         <div className="p-6 space-y-4">
-          {/* Position summary */}
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: "Balance", value: "••••••" },
-              { label: "APY", value: `${isSupply ? "+" : "-"}${pos.apy}`, color: isSupply ? "text-green-400" : "text-red-400" },
-              { label: "Health", value: "1.92", color: "text-primary" },
-            ].map(s => (
-              <div key={s.label} className="bg-[#05080f]/60 border border-border/20 rounded-xl p-3 text-center">
-                <div className="text-[9px] text-foreground/40 uppercase tracking-widest mb-1">{s.label}</div>
-                <div className={`text-sm font-bold ${s.color ?? "text-foreground/50 tracking-widest"}`}>{s.value}</div>
-              </div>
-            ))}
-          </div>
-
           {/* Amount input */}
           <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-4 space-y-2">
             <label className="text-xs text-foreground/40">
@@ -86,38 +124,18 @@ function ManageModal({ pos, onClose }: { pos: Position; onClose: () => void }) {
                 <span className="text-sm font-bold">{pos.symbol}</span>
               </div>
             </div>
-            <div className="flex justify-between text-[10px] text-foreground/30 pt-1">
-              <span>Available</span>
-              <span className="flex items-center gap-1"><Lock size={9} /> Encrypted</span>
-            </div>
-          </div>
-
-          {/* Impact preview */}
-          <div className="bg-[#05080f]/40 border border-border/20 rounded-xl px-4 py-3 space-y-2">
-            {[
-              { label: "New Health Factor", value: amount ? "~2.14" : "—", color: "text-primary" },
-              { label: "Liquidation Price", value: "Hidden", muted: true },
-            ].map(r => (
-              <div key={r.label} className="flex justify-between text-[11px]">
-                <span className="text-foreground/40">{r.label}</span>
-                <span className={`font-bold ${r.color ?? (r.muted ? "text-foreground/30" : "")}`}>{r.value}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Privacy notice */}
-          <div className="flex items-center gap-2 bg-[#05080f]/40 border border-border/20 rounded-xl px-4 py-3">
-            <Info size={13} className="text-foreground/30 flex-shrink-0" />
-            <span className="text-[11px] text-foreground/40">Transaction amount is encrypted via Zama FHEVM</span>
           </div>
 
           <button
-            className={`w-full py-4 rounded-2xl font-bold text-sm transition-all ${
+            onClick={handleAction}
+            disabled={loading || !amount}
+            className={`w-full py-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
               isSupply
-                ? "bg-primary hover:bg-primary/90 text-primary-foreground"
-                : "bg-red-500/80 hover:bg-red-500 text-white"
+                ? "bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50"
+                : "bg-red-500/80 hover:bg-red-500 text-white disabled:opacity-50"
             }`}
           >
+            {loading && <Loader2 size={16} className="animate-spin" />}
             {tab === "add"
               ? isSupply ? "Confirm Supply" : "Confirm Borrow"
               : isSupply ? "Confirm Withdraw" : "Confirm Repay"}

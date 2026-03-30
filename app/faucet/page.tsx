@@ -14,14 +14,13 @@ const FAUCET_TOKENS = [
 ]
 
 const TOKEN_ADDRESSES: Record<string, string> = {
-  WETH: CONTRACTS.MOCK_TOKENS.LOCALHOST.WETH,
-  USDC: CONTRACTS.MOCK_TOKENS.LOCALHOST.USDC,
-  WBTC: CONTRACTS.MOCK_TOKENS.LOCALHOST.WBTC,
-  BNB:  CONTRACTS.MOCK_TOKENS.LOCALHOST.BNB,
+  WETH: CONTRACTS.SPOKES.SEPOLIA.WETH,
+  USDC: CONTRACTS.SPOKES.SEPOLIA.USDC,
+  WBTC: CONTRACTS.SPOKES.SEPOLIA.WBTC || "",
+  BNB:  CONTRACTS.SPOKES.SEPOLIA.BNB,
 }
 
-// Hardhat account #0 — always has 10,000 ETH, is owner of mock tokens
-const DEPLOYER_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+// For testnet, users use their own gas to mint
 const MINT_ABI = ["function mint(address to, uint256 amount) external"]
 
 function TokenDropdown({ options, value, onChange }: {
@@ -88,12 +87,16 @@ export default function FaucetPage() {
     }
 
     try {
-      // Use deployer key directly via RPC — no MetaMask, no gas from user wallet
-      const provider = new ethers.JsonRpcProvider(NETWORKS.LOCAL_HARDHAT.rpc)
-      const deployer = new ethers.Wallet(DEPLOYER_KEY, provider)
-      const contract = new ethers.Contract(tokenAddress, MINT_ABI, deployer)
+      const { BrowserProvider } = await import("ethers")
+      if (!window.ethereum) throw new Error("No wallet found")
+      
+      const provider = new BrowserProvider(window.ethereum)
+      const signer = await provider.getSigner()
+      const contract = new ethers.Contract(tokenAddress, MINT_ABI, signer)
       const rawAmount = ethers.parseUnits(parsedAmount.toString(), selected.decimals)
+      
       const tx = await contract.mint(recipient, rawAmount)
+      setStatus("loading") // Re-trigger loading for TX confirm
       const receipt = await tx.wait()
       setTxHash(receipt.hash)
       setStatus("success")
@@ -108,7 +111,7 @@ export default function FaucetPage() {
   return (
     <div className="flex-1 flex flex-col py-8 gap-8 w-full font-mono text-white">
       <div className="flex flex-col gap-2">
-        <span className="font-mono text-[10px] tracking-[0.4em] text-primary/60 uppercase">Confidential_Faucet // localhost_only</span>
+        <span className="font-mono text-[10px] tracking-[0.4em] text-primary/60 uppercase">Confidential_Faucet // sepolia_testnet</span>
         <h1 className="text-white text-3xl tracking-tighter font-black uppercase">Testnet Resources</h1>
       </div>
 
@@ -118,7 +121,7 @@ export default function FaucetPage() {
             <div>
               <h3 className="text-xl font-bold text-white">Request Test Tokens</h3>
               <p className="text-xs text-foreground/40 mt-1 leading-relaxed">
-                Tokens are minted by the deployer directly — your wallet needs no ETH for gas.
+                Tokens are minted on Sepolia. You will need a small amount of Sepolia ETH for gas.
               </p>
             </div>
 
@@ -157,7 +160,7 @@ export default function FaucetPage() {
 
             <div className="flex items-center gap-2 bg-[#05080f]/40 border border-border/20 rounded-xl px-4 py-3">
               <Info size={14} className="text-foreground/30 flex-shrink-0" />
-              <span className="text-xs text-foreground/40">Deployer mints directly to your address — no wallet signature needed</span>
+              <span className="text-xs text-foreground/40">Tokens are minted directly to your address via contract call</span>
             </div>
 
             <button onClick={handleDispense} disabled={status === "loading" || !canSubmit}
@@ -191,10 +194,10 @@ export default function FaucetPage() {
               <span className="text-xs font-bold uppercase tracking-widest text-foreground/50">How It Works</span>
             </div>
             <div className="space-y-2 text-[11px] text-foreground/40 leading-relaxed font-mono">
-              <p className="text-foreground/60">No MetaMask needed. No gas required.</p>
-              <p>The Hardhat deployer wallet signs the mint transaction directly via RPC and sends tokens to your address.</p>
-              <p className="mt-3">Deployer: <span className="text-primary/60">0xf39Fd6...92266</span></p>
-              <p>RPC: <span className="text-primary/60">http://127.0.0.1:8545</span></p>
+              <p className="text-foreground/60">Gas required for minting.</p>
+              <p>The mint transaction is sent from your connected wallet on Sepolia.</p>
+              <p className="mt-3">Network: <span className="text-primary/60">Eth Sepolia</span></p>
+              <p>Status: <span className="text-primary/60">LIVE</span></p>
             </div>
           </div>
 

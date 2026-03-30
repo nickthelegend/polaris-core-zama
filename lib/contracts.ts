@@ -21,112 +21,82 @@ import PrivateSwapBNBABI from './abis/PrivateSwapBNB.json';
 
 export const CONTRACTS = {
     MASTER: {
-        POOL_MANAGER: "0x9f40bfe80fADa11569c68d2DFb9f3250841C572E",
-        LOAN_ENGINE: "0x3b3af0440510Cd99336AF525200Fd1d3F311DA24",
-        SCORE_MANAGER: "0x4f8295bf1bE96b548aa0384673415217c4afed99",
-        PROTOCOL_FUNDS: "0x45fDec5099580F2FeBa9E9e27FCd19BfEDDF4fA9",
-        MERCHANT_ROUTER: "0xCC5B2C15D50dBE201279533a1E3fDd643F8772bb",
-        CREDIT_ORACLE: "0x9260fD34Be71Fa6C8DFd7a989a0b64545FF5C0E9",
-        USDC: "0x58e67DeeeCDE20f10ed90b5191f08f39e81b6658",
+        POOL_MANAGER: process.env.VITE_POOL_MANAGER || "",
+        LOAN_ENGINE: process.env.VITE_LOAN_ENGINE || "",
+        SCORE_MANAGER: process.env.VITE_SCORE_MANAGER || "",
+        PROTOCOL_FUNDS: process.env.VITE_PROTOCOL_FUNDS || "",
+        MERCHANT_ROUTER: process.env.VITE_MERCHANT_ROUTER || "",
+        CREDIT_ORACLE: process.env.VITE_CREDIT_ORACLE || "",
+        USDC: process.env.VITE_MOCK_USDC || "",
+        TOKEN_FAUCET: process.env.VITE_TOKEN_FAUCET || "",
         ORACLE: "0x0000000000000000000000000000000000000FD2"
     },
     SPOKES: {
         SEPOLIA: {
-            LIQUIDITY_VAULT: "0x5163A9689C0560DE07Cdc2ecA391BA5BE8b3D35A",
-            USDC: "0xA715e84556b03aBdaC42aa421b5D6081A5434a2F",
-            USDT: "0x87A0E38fF8e63AE90ea95bbd61Ce9c6EC75422d0",
-            AVAX: "0x5b731C3e54b7aC7A5516861eac9704aDBC480584",
-            WBTC: "0x4105F990aBd92f8CCCD8c58433963B862C4b34a5",
-            WETH: "0x35504AceAea50B3dbeF640618b535feDB2db680B",
-            LINK: "0x1929264FC968770A72021fE29aD5d9e4344ef152",
-            BNB: "0xd376252519348D8d219C250E374CE81A1B528BE5",
+            LIQUIDITY_VAULT: process.env.VITE_POOL_MANAGER || "", // In this archi, PoolManager acts as vault hub
+            USDC: process.env.VITE_MOCK_USDC || "",
+            USDT: process.env.VITE_MOCK_USDT || "",
+            AVAX: "", 
+            WBTC: "",
+            WETH: process.env.VITE_MOCK_WETH || "",
+            LINK: "",
+            BNB: process.env.VITE_MOCK_BNB || "",
             PRIVATE_SWAPS: {
-                WETH: "0x82e01223d51Eb87e16A03E24687EDF0F294da6f1",
-                BNB: "0x2bdCC0de6bE1f7D2ee689a0342D76F52E8EFABa3",
-                USDC: "0x7969c5eD335650692Bc04293B07F5BF2e7A673C0",
-                USDT: "0x7bc06c482DEAd17c0e297aFbC32f6e63d3846650"
+                WETH: process.env.VITE_PRIVATE_SWAP_WETH || "",
+                BNB: process.env.VITE_PRIVATE_SWAP_BNB || "",
+                USDC: process.env.VITE_PRIVATE_SWAP_USDC || "",
+                USDT: process.env.VITE_PRIVATE_SWAP_USDT || ""
             },
             PRIVATE_LENDING: {
-                PRIVATE_LENDING_POOL: "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
-                PRIVATE_BORROW_MANAGER: "0x1234567890123456789012345678901234567890", // placeholder if not found
-                PRIVATE_COLLATERAL_VAULT: "0x1234567890123456789012345678901234567890" 
+                PRIVATE_LENDING_POOL: process.env.VITE_PRIVATE_LENDING_POOL || "",
+                PRIVATE_BORROW_MANAGER: process.env.VITE_PRIVATE_BORROW_MANAGER || "",
+                PRIVATE_COLLATERAL_VAULT: process.env.VITE_PRIVATE_COLLATERAL_VAULT || ""
             },
             id: 11155111
         },
-        FUJI: {
-            LIQUIDITY_VAULT: "0xD221D9E4F6E6709a3cf38cEC57662bbC7F60f3Df",
-            USDC: "0x7F7FfeC9a7a6DC8B383606BE86DE5bE9e99a1302",
-            USDT: "0xDE7bB3d5d37Cc4A4eCdd0Fd10C9AF92B545C89c2",
-            AVAX: "0x21B15447514649C7cb934cA01c2528ff52Daa84b",
-            WBTC: "0xbCFCF4D1B880Ea38b71E45394FaCC5b71678C44A",
-            WETH: "0x0a60F63B187F9BBa95F213fC7eca447239E10603",
-            LINK: "0x4f8295bf1bE96b548aa0384673415217c4afed99",
-            BNB: "0xE6f01d32851A30Fb8C8A02142d5d1E333574312a",
-            id: 43113
-        },
-        BASE_SEPOLIA: {
-            LIQUIDITY_VAULT: "0x546Bbb8B960EaF059B0771cC4808Da13829e1c42",
-            USDC: "0xD221D9E4F6E6709a3cf38cEC57662bbC7F60f3Df",
-            USDT: "0xf2411f2C27a619Ab40001A956fEd625DBFa458AF",
-            AVAX: "0x369B65aaD1c39159a0f860012f59D0F4c3484812",
-            WBTC: "0x5A1D3939C5b3a43B36Dc42C816bc5c0F02c1C261",
-            WETH: "0x8C213a3Db9187966Ebf8DfD0488A225044265AeF",
-            LINK: "0x9f40bfe80fADa11569c68d2DFb9f3250841C572E",
-            BNB: "0xBa403C90a5FE4BDfD2a4705bA7C2fA30F47Aa2e1",
-            id: 84532
-        },
-        CRONOS: {
-            LIQUIDITY_VAULT: "0x2D048c09ff1d00F2c948Fe359f6437b2aCc3C00B",
-            USDC: "0xD81FB2ea7fA64E3CC934eC7245566F4178A949E9",
-            USDT: "0x97658341fc30EEBe61a62d65FA62743A5FE286fC",
-            AVAX: "0xb0764B66447E3BFFB331660765Fe0101b2337963",
-            WBTC: "0x466Bd36643148093e10e9615C36EeB97c5c99c3C",
-            WETH: "0x2eaBA0B5582ca017EbF7Eb6305B7F72C807CFDa8",
-            LINK: "0x78300a1F2EA8FA8E0Cb202610E639A54A829237b",
-            BNB: "0x136a2956e38ae617F4be249b383191A55f274431",
-            id: 338
-        },
-        GANACHE: {
-            LIQUIDITY_VAULT: "0xc4a748342b13F900c3691125A3D8019d36803c07",
-            USDC: "0x294C0Ad33d01C27B9Aaf6d954Bb211416A06EB03",
-            USDT: "0x4248759651CBBfBE5331325730b92d791C1bB8a1",
-            POOL_MANAGER: "0xa196C48B229a026a6F55d2ece742276092F4Bc32",
-            CREDIT_ORACLE: "0x9260fD34Be71Fa6C8DFd7a989a0b64545FF5C0E9",
-            SCORE_MANAGER: "0xC1b3409Fb0c93Fed4A6cE046557cBE042d5A40Dc",
-            LOAN_ENGINE: "0xe9f47f5f0D1A5bd5BfeCf46c48E72206fD7E4e82",
-            MERCHANT_ROUTER: "0xCC5B2C15D50dBE201279533a1E3fDd643F8772bb",
-            id: 1337
+        // Keeping structure for other chains but leaving empty/placeholders if not in .env
+        FUJI: { id: 43113, LIQUIDITY_VAULT: "", USDC: "", USDT: "", AVAX: "", WBTC: "", WETH: "", LINK: "", BNB: "" },
+        BASE_SEPOLIA: { id: 84532, LIQUIDITY_VAULT: "", USDC: "", USDT: "", AVAX: "", WBTC: "", WETH: "", LINK: "", BNB: "" },
+        CRONOS: { id: 338, LIQUIDITY_VAULT: "", USDC: "", USDT: "", AVAX: "", WBTC: "", WETH: "", LINK: "", BNB: "" },
+        GANACHE: { 
+            id: 1337,
+            LIQUIDITY_VAULT: "",
+            USDC: "",
+            USDT: "",
+            POOL_MANAGER: "",
+            CREDIT_ORACLE: "",
+            SCORE_MANAGER: "",
+            LOAN_ENGINE: "",
+            MERCHANT_ROUTER: ""
         }
     },
     SOURCE: {
-        LIQUIDITY_VAULT: "0x8C213a3Db9187966Ebf8DfD0488A225044265AeF",
-        USDC: "0xbCFCF4D1B880Ea38b71E45394FaCC5b71678C44A",
-        USDT: "0xf75C8eE5b4a005120bCF0D6d457A8000dddDea8f"
+        LIQUIDITY_VAULT: process.env.VITE_POOL_MANAGER || "",
+        USDC: process.env.VITE_MOCK_USDC || "",
+        USDT: process.env.VITE_MOCK_USDT || ""
     },
-    // FHE Private Lending contracts — local Hardhat (chainId 31337)
     PRIVATE_LENDING: {
-        PRIVATE_COLLATERAL_VAULT: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-        PRIVATE_BORROW_MANAGER: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
-        PRIVATE_LENDING_POOL: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-        PRIVATE_LIQUIDATION_ENGINE: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
+        PRIVATE_COLLATERAL_VAULT: process.env.VITE_PRIVATE_COLLATERAL_VAULT || "",
+        PRIVATE_BORROW_MANAGER: process.env.VITE_PRIVATE_BORROW_MANAGER || "",
+        PRIVATE_LENDING_POOL: process.env.VITE_PRIVATE_LENDING_POOL || "",
+        PRIVATE_LIQUIDATION_ENGINE: process.env.VITE_PRIVATE_LIQUIDATION_ENGINE || ""
     },
-    // Same addresses aliased for LOCAL_HARDHAT network resolution
     LOCAL_HARDHAT: {
-        PRIVATE_COLLATERAL_VAULT: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-        PRIVATE_BORROW_MANAGER: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
-        PRIVATE_LENDING_POOL: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-        PRIVATE_LIQUIDATION_ENGINE: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
+        PRIVATE_COLLATERAL_VAULT: process.env.VITE_PRIVATE_COLLATERAL_VAULT || "",
+        PRIVATE_BORROW_MANAGER: process.env.VITE_PRIVATE_BORROW_MANAGER || "",
+        PRIVATE_LENDING_POOL: process.env.VITE_PRIVATE_LENDING_POOL || "",
+        PRIVATE_LIQUIDATION_ENGINE: process.env.VITE_PRIVATE_LIQUIDATION_ENGINE || ""
     },
-    // Mock ERC20 tokens deployed to local Hardhat node
     MOCK_TOKENS: {
         LOCALHOST: {
-            WETH: "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82",
-            USDC: "0x9A676e781A523b5d0C0e43731313A708CB607508",
-            WBTC: "0x0B306BF915C4d645ff596e518fAf3F9669b97016",
-            BNB:  "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1",
+            WETH: process.env.VITE_MOCK_WETH || "",
+            USDC: process.env.VITE_MOCK_USDC || "",
+            WBTC: "",
+            BNB:  process.env.VITE_MOCK_BNB || ""
         }
     }
 };
+
 
 export const ABIS = {
     PoolManager: PoolManagerABI,

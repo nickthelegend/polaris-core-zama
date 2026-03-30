@@ -22,7 +22,7 @@ export const TOKENS: Record<string, TokenConfig> = {
     decimals: 18,
     logo: "/tokens/weth.svg",
     addresses: {
-      [SEPOLIA]: "0x35504AceAea50B3dbeF640618b535feDB2db680B",
+      [SEPOLIA]: process.env.VITE_MOCK_WETH || "0x35504AceAea50B3dbeF640618b535feDB2db680B",
       [LOCALHOST]: "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82",
     },
   },
@@ -32,7 +32,7 @@ export const TOKENS: Record<string, TokenConfig> = {
     decimals: 6,
     logo: "/tokens/usdc.svg",
     addresses: {
-      [SEPOLIA]: "0xA715e84556b03aBdaC42aa421b5D6081A5434a2F",
+      [SEPOLIA]: process.env.VITE_MOCK_USDC || "0xA715e84556b03aBdaC42aa421b5D6081A5434a2F",
       [LOCALHOST]: "0x9A676e781A523b5d0C0e43731313A708CB607508",
     },
   },
@@ -42,7 +42,7 @@ export const TOKENS: Record<string, TokenConfig> = {
     decimals: 8,
     logo: "/tokens/wbtc.svg",
     addresses: {
-      [SEPOLIA]: "0x4105F990aBd92f8CCCD8c58433963B862C4b34a5",
+      [SEPOLIA]: process.env.VITE_MOCK_WBTC || "0x4105F990aBd92f8CCCD8c58433963B862C4b34a5",
       [LOCALHOST]: "0x0B306BF915C4d645ff596e518fAf3F9669b97016",
     },
   },
@@ -52,7 +52,7 @@ export const TOKENS: Record<string, TokenConfig> = {
     decimals: 18,
     logo: "/tokens/bnb.svg",
     addresses: {
-      [SEPOLIA]: "0xd376252519348D8d219C250E374CE81A1B528BE5",
+      [SEPOLIA]: process.env.VITE_MOCK_BNB || "0xd376252519348D8d219C250E374CE81A1B528BE5",
       [LOCALHOST]: "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1",
     },
   },

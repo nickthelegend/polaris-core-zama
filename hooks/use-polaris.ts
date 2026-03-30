@@ -14,24 +14,13 @@ export function usePolaris() {
     const [txHash, setTxHash] = useState<string | null>(null);
 
     const getSpokeConfig = useCallback((networkId: number) => {
-        if (networkId === NETWORKS.SEPOLIA.id) return CONTRACTS.SPOKES.SEPOLIA;
-        if (networkId === NETWORKS.FUJI.id) return CONTRACTS.SPOKES.FUJI;
-        if (networkId === NETWORKS.BASE_SEPOLIA.id) return CONTRACTS.SPOKES.BASE_SEPOLIA;
-        if (networkId === NETWORKS.CRONOS.id) return CONTRACTS.SPOKES.CRONOS;
-        if (networkId === NETWORKS.GANACHE.id) return CONTRACTS.SPOKES.GANACHE;
-        return CONTRACTS.SOURCE; // Fallback
+        if (networkId === 11155111) return CONTRACTS.SPOKES.SEPOLIA;
+        return CONTRACTS.SPOKES.SEPOLIA; // Default to Sepolia
     }, []);
 
     const getMasterConfig = useCallback(() => {
-        const chainIdStr = chainId?.toString() || '';
-        const isLocal = chainIdStr.includes('1337') || chainIdStr === '0x539' || chainIdStr === '539';
-
-        console.log(`[POLARIS_DEBUG] Chain: ${chainIdStr}, isLocal: ${isLocal}`);
-
-        return isLocal
-            ? { config: CONTRACTS.SPOKES.GANACHE, id: NETWORKS.GANACHE.id }
-            : { config: CONTRACTS.MASTER, id: NETWORKS.USC.id };
-    }, [chainId]);
+        return { config: CONTRACTS.MASTER, id: 11155111 };
+    }, []);
 
     const getContract = useCallback(async (contractAddress: string, abi: any, networkId: number, useSigner = true) => {
         const actualAbi = abi.abi || abi;
@@ -42,9 +31,8 @@ export function usePolaris() {
             const signer = await provider.getSigner();
             return new Contract(contractAddress, actualAbi, signer);
         } else {
-            // For read-only, find the RPC — fall back to localhost for unknown chains
-            const net = Object.values(NETWORKS).find(n => n.id === networkId);
-            const rpc = net?.rpc ?? NETWORKS.LOCAL_HARDHAT.rpc;
+            // For read-only, use the configured Sepolia RPC
+            const rpc = process.env.VITE_NETWORK_URL || "https://ethereum-sepolia-rpc.publicnode.com";
             const provider = new JsonRpcProvider(rpc);
             return new Contract(contractAddress, actualAbi, provider);
         }

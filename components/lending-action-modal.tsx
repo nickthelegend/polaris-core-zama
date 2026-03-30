@@ -6,7 +6,10 @@ import { TokenIcon } from "@/components/token-icon"
 import { useFhePrivateLending } from "@/hooks/use-fhe-private-lending"
 import { usePolaris } from "@/hooks/use-polaris"
 import { TOKENS, getTokenAddress } from "@/config/tokens"
+import { parseUnits } from "viem"
 import { CONTRACTS, NETWORKS } from "@/lib/contracts"
+import { useAccount } from "wagmi"
+import { syncTransaction, syncPosition } from "@/lib/sync-utils"
 
 export type ModalMode = "supply" | "borrow"
 
@@ -46,7 +49,8 @@ export function LendingActionModal({
   const [walletBalance, setWalletBalance] = useState<string | null>(null)
 
   const { supply, borrow, depositCollateral, loading, encryptAmount } = useFhePrivateLending()
-  const { getTokenBalance, address, chainId } = usePolaris()
+  const { getTokenBalance, address: polarisAddress, chainId } = usePolaris()
+  const { address } = useAccount()
 
   const isSupply = mode === "supply"
   const apy = isSupply ? pool.supplyApy : pool.borrowApy
@@ -60,14 +64,14 @@ export function LendingActionModal({
 
   // Fetch wallet balance for the selected token
   useEffect(() => {
-    if (!address) return
+    if (!polarisAddress) return
     const tokenAddress = getTokenAddress(pool.symbol, networkId)
     if (!tokenAddress) return
     setWalletBalance(null)
     getTokenBalance(tokenAddress, networkId).then(bal => {
       setWalletBalance(parseFloat(bal).toFixed(4))
     }).catch(() => setWalletBalance("—"))
-  }, [address, pool.symbol, networkId, getTokenBalance])
+  }, [polarisAddress, pool.symbol, networkId, getTokenBalance])
 
   // Max you can supply = wallet balance; max borrow = 80% of wallet balance (simple LTV)
   const maxSupply = walletBalance && walletBalance !== "—" ? walletBalance : null
@@ -86,7 +90,9 @@ export function LendingActionModal({
     setTxHash(null)
     setDone(false)
 
-    const wei = BigInt(Math.floor(parseFloat(amount) * 1e9)) * BigInt(1e9)
+    const token = TOKENS[pool.symbol]
+    const decimals = token?.decimals || 18
+    const wei = parseUnits(amount, decimals)
 
     try {
       // Step 1 — encrypt
@@ -115,6 +121,28 @@ export function LendingActionModal({
       const fn = isSupply ? "supply" : "borrow"
       addLog({ id: 3, step: `Calling ${fn}()`, detail: "Sending encrypted tx to PrivateLendingPool...", status: "pending" })
       const hash = isSupply ? await supply(wei, pool.symbol) : await borrow(wei, pool.symbol)
+      
+      // Sync to Backend
+      if (address) {
+        await syncTransaction({
+          userAddress: address,
+          type: isSupply ? "supply" : "borrow",
+          title: isSupply ? `Supplied ${amount} ${pool.symbol}` : `Borrowed ${amount} ${pool.symbol}`,
+          amount,
+          asset: pool.symbol,
+          txHash: hash,
+          status: "VERIFIED"
+        });
+
+        await syncPosition({
+          walletAddress: address,
+          type: isSupply ? "SUPPLY" : "BORROW",
+          symbol: pool.symbol,
+          entryAmount: isSupply ? parseFloat(amount) : -parseFloat(amount),
+          txHash: hash
+        });
+      }
+
       updateLog(3, { status: "done", detail: `Confirmed · ${hash.slice(0, 10)}...` })
 
       // Step 4 — state
