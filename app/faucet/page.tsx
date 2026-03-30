@@ -5,18 +5,21 @@ import { ChevronDown, Check, Info, Loader2, CheckCircle2, AlertTriangle, ShieldC
 import { TokenIcon } from "@/components/token-icon"
 import { CONTRACTS, NETWORKS } from "@/lib/contracts"
 import { ethers } from "ethers"
+import { logger } from "@/lib/logger"
+import { parseRevertReason } from "@/lib/revert-mapper"
+import { cn } from "@/lib/utils"
 
 const FAUCET_TOKENS = [
   { symbol: "WETH", decimals: 18, max: 100_000_000 },
   { symbol: "USDC", decimals: 6,  max: 100_000_000 },
-  { symbol: "WBTC", decimals: 8,  max: 100_000_000 },
+  { symbol: "USDT", decimals: 6,  max: 100_000_000 },
   { symbol: "BNB",  decimals: 18, max: 100_000_000 },
 ]
 
 const TOKEN_ADDRESSES: Record<string, string> = {
   WETH: CONTRACTS.SPOKES.SEPOLIA.WETH,
   USDC: CONTRACTS.SPOKES.SEPOLIA.USDC,
-  WBTC: CONTRACTS.SPOKES.SEPOLIA.WBTC || "",
+  USDT: CONTRACTS.SPOKES.SEPOLIA.USDT,
   BNB:  CONTRACTS.SPOKES.SEPOLIA.BNB,
 }
 
@@ -78,13 +81,18 @@ export default function FaucetPage() {
   const handleDispense = async () => {
     if (!canSubmit) return
     setStatus("loading"); setErrMsg("")
+    const module = "FAUCET"
 
     const tokenAddress = TOKEN_ADDRESSES[token]
-    if (!tokenAddress || tokenAddress === "0x0000000000000000000000000000000000000000") {
-      setErrMsg("Token not deployed. Run: npm run deploy:tokens in polaris-protocol")
+    if (!tokenAddress) {
+      const err = `${token} not configured. Check polaris-core/.env for NEXT_PUBLIC_MOCK_${token}`
+      logger.error(module, err)
+      setErrMsg(err)
       setStatus("error")
       return
     }
+
+    logger.info(module, "Initiating mint", { recipient, amount, token })
 
     try {
       const { BrowserProvider } = await import("ethers")
@@ -96,13 +104,18 @@ export default function FaucetPage() {
       const rawAmount = ethers.parseUnits(parsedAmount.toString(), selected.decimals)
       
       const tx = await contract.mint(recipient, rawAmount)
+      logger.info(module, "Transaction broadcasted", { hash: tx.hash })
+      
       setStatus("loading") // Re-trigger loading for TX confirm
       const receipt = await tx.wait()
+      logger.info(module, "Transaction confirmed", { hash: receipt.hash })
+      
       setTxHash(receipt.hash)
       setStatus("success")
       setAmount("")
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err)
+      const msg = parseRevertReason(err)
+      logger.error(module, msg)
       setErrMsg(msg)
       setStatus("error")
     }
@@ -111,46 +124,46 @@ export default function FaucetPage() {
   return (
     <div className="flex-1 flex flex-col py-8 gap-8 w-full font-mono text-white">
       <div className="flex flex-col gap-2">
-        <span className="font-mono text-[10px] tracking-[0.4em] text-primary/60 uppercase">Confidential_Faucet // sepolia_testnet</span>
-        <h1 className="text-white text-3xl tracking-tighter font-black uppercase">Testnet Resources</h1>
+        <span className="font-mono text-[10px] tracking-[0.4em] text-primary/60 uppercase animate-pulse">Confidential_Faucet // sepolia_testnet</span>
+        <h1 className="text-white text-3xl md:text-5xl tracking-tighter font-black uppercase italic">Testnet_Resources</h1>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div className="lg:col-span-7 bg-[#0d0f14] border border-border/30 rounded-3xl overflow-hidden">
           <div className="p-8 space-y-5">
-            <div>
-              <h3 className="text-xl font-bold text-white">Request Test Tokens</h3>
-              <p className="text-xs text-foreground/40 mt-1 leading-relaxed">
-                Tokens are minted on Sepolia. You will need a small amount of Sepolia ETH for gas.
+            <div className="space-y-1">
+              <h3 className="text-xl font-black uppercase tracking-widest text-white">Mint_Test_Tokens</h3>
+              <p className="text-[10px] font-black uppercase tracking-widest text-foreground/30">
+                Direct_Protocol_Minting // Gas_Required
               </p>
             </div>
 
             {/* Recipient */}
-            <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-5 space-y-2">
-              <label className="text-xs text-foreground/40">Recipient address</label>
+            <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-5 space-y-2 group focus-within:border-primary/40 transition-all">
+              <label className="text-[10px] font-black uppercase tracking-widest text-foreground/40">Recipient_Address</label>
               <input type="text" value={recipient} onChange={e => setRecipient(e.target.value.trim())}
-                placeholder="0xcced528..."
+                placeholder="ADDRESS_HEX"
                 className={`w-full bg-transparent text-sm font-mono placeholder:text-foreground/20 focus:outline-none ${recipient && !isValidRecipient ? "text-red-400" : "text-foreground/70"}`} />
-              {recipient && !isValidRecipient && <p className="text-[10px] text-red-400">Invalid address</p>}
+              {recipient && !isValidRecipient && <p className="text-[10px] text-red-400 font-bold uppercase tracking-widest">INVALID_ADDRESS_HASH</p>}
             </div>
 
             {/* Amount + token */}
-            <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-5 space-y-3">
-              <label className="text-xs text-foreground/40">Amount to mint</label>
+            <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-5 space-y-3 group focus-within:border-primary/40 transition-all">
+              <label className="text-[10px] font-black uppercase tracking-widest text-foreground/40">Amount_To_Mint</label>
               <div className="flex items-center gap-3">
                 <input type="number" value={amount} onChange={e => { setAmount(e.target.value); setStatus("idle") }}
                   placeholder="0"
-                  className={`flex-1 bg-transparent text-4xl font-light placeholder:text-foreground/20 focus:outline-none min-w-0 ${isOverMax ? "text-red-400" : "text-foreground/60"}`} />
-                <TokenDropdown options={FAUCET_TOKENS} value={token} onChange={v => { setToken(v); setAmount(""); setStatus("idle") }} />
+                  className={`flex-1 bg-transparent text-4xl font-light tracking-tighter placeholder:text-foreground/20 focus:outline-none min-w-0 ${isOverMax ? "text-red-400" : "text-foreground/60"}`} />
+               <TokenDropdown options={FAUCET_TOKENS} value={token} onChange={v => { setToken(v); setAmount(""); setStatus("idle") }} />
               </div>
-              <div className="flex items-center justify-between text-[10px]">
-                <span className="text-foreground/30">Max per request</span>
+              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
+                <span className="text-foreground/30">Max_Per_Request</span>
                 <button type="button" onClick={() => setAmount(selected.max.toString())}
-                  className="text-primary/70 hover:text-primary font-bold transition-colors">
+                  className="text-primary/70 hover:text-primary font-black transition-colors">
                   {selected.max.toLocaleString()} {token}
                 </button>
               </div>
-              {isOverMax && (
+             {isOverMax && (
                 <div className="flex items-center gap-2 text-red-400 text-[11px]">
                   <AlertTriangle size={12} />
                   Max is {selected.max.toLocaleString()} {token} (10% of 1B)
@@ -158,16 +171,22 @@ export default function FaucetPage() {
               )}
             </div>
 
-            <div className="flex items-center gap-2 bg-[#05080f]/40 border border-border/20 rounded-xl px-4 py-3">
-              <Info size={14} className="text-foreground/30 flex-shrink-0" />
-              <span className="text-xs text-foreground/40">Tokens are minted directly to your address via contract call</span>
+            <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
+              <Info size={14} className="text-primary/40 flex-shrink-0" />
+              <span className="text-[10px] font-black uppercase tracking-tighter text-primary/40">Tokens_minted_directly_via_contract_call</span>
             </div>
 
-            <button onClick={handleDispense} disabled={status === "loading" || !canSubmit}
-              className="w-full py-4 rounded-2xl bg-purple-500/70 hover:bg-purple-500/90 disabled:opacity-50 text-white font-bold text-sm transition-all flex items-center justify-center gap-2">
+            <button 
+              onClick={handleDispense} 
+              disabled={status === "loading" || !canSubmit}
+              className={cn(
+                "w-full py-5 rounded-2xl font-black text-sm uppercase tracking-tighter transition-all flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_20px_rgba(166,242,74,0.1)]",
+                status === "loading" || !canSubmit ? "bg-white/5 text-foreground/20" : "bg-primary text-black"
+              )}
+            >
               {status === "loading"
-                ? <><Loader2 size={16} className="animate-spin" /> Minting...</>
-                : `Mint ${amount ? Number(amount).toLocaleString() : "—"} ${token}`}
+                ? <><Loader2 size={16} className="animate-spin" /> MINTING_RESOURCES...</>
+                : `MINT_${amount ? Number(amount).toLocaleString() : "—"}_${token}`}
             </button>
 
             {status === "success" && (
@@ -191,9 +210,9 @@ export default function FaucetPage() {
           <div className="bg-[#05080f]/40 border border-border/40 rounded-3xl p-8 backdrop-blur-md space-y-6">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-primary" />
-              <span className="text-xs font-bold uppercase tracking-widest text-foreground/50">How It Works</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/50">How_It_Works</span>
             </div>
-            <div className="space-y-2 text-[11px] text-foreground/40 leading-relaxed font-mono">
+           <div className="space-y-2 text-[11px] text-foreground/40 leading-relaxed font-mono">
               <p className="text-foreground/60">Gas required for minting.</p>
               <p>The mint transaction is sent from your connected wallet on Sepolia.</p>
               <p className="mt-3">Network: <span className="text-primary/60">Eth Sepolia</span></p>
@@ -202,8 +221,8 @@ export default function FaucetPage() {
           </div>
 
           <div className="bg-primary/5 border border-primary/20 rounded-3xl p-8 space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-primary">Dispense Policy</h3>
-            <div className="space-y-3 font-mono text-[10px]">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">DISPENSE_POLICY</h3>
+           <div className="space-y-3 font-mono text-[10px]">
               <div className="flex justify-between border-b border-primary/10 pb-2">
                 <span className="text-foreground/40">Total Supply</span>
                 <span className="text-white font-bold">1,000,000,000 / token</span>

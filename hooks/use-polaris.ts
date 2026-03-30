@@ -34,7 +34,7 @@ export function usePolaris() {
             return new Contract(contractAddress, actualAbi, signer);
         } else {
             // For read-only, use the configured Sepolia RPC
-            const rpc = process.env.VITE_NETWORK_URL || "https://ethereum-sepolia-rpc.publicnode.com";
+            const rpc = process.env.NEXT_PUBLIC_NETWORK_URL || "https://ethereum-sepolia-rpc.publicnode.com";
             const provider = new JsonRpcProvider(rpc);
             return new Contract(contractAddress, actualAbi, provider);
         }

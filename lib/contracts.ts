@@ -21,79 +21,49 @@ import PrivateSwapBNBABI from './abis/PrivateSwapBNB.json';
 
 export const CONTRACTS = {
     MASTER: {
-        POOL_MANAGER: process.env.VITE_POOL_MANAGER || "",
-        LOAN_ENGINE: process.env.VITE_LOAN_ENGINE || "",
-        SCORE_MANAGER: process.env.VITE_SCORE_MANAGER || "",
-        PROTOCOL_FUNDS: process.env.VITE_PROTOCOL_FUNDS || "",
-        MERCHANT_ROUTER: process.env.VITE_MERCHANT_ROUTER || "",
-        CREDIT_ORACLE: process.env.VITE_CREDIT_ORACLE || "",
-        USDC: process.env.VITE_MOCK_USDC || "",
-        TOKEN_FAUCET: process.env.VITE_TOKEN_FAUCET || "",
+        POOL_MANAGER: process.env.NEXT_PUBLIC_POOL_MANAGER || "",
+        LOAN_ENGINE: process.env.NEXT_PUBLIC_LOAN_ENGINE || "",
+        SCORE_MANAGER: process.env.NEXT_PUBLIC_SCORE_MANAGER || "",
+        PROTOCOL_FUNDS: process.env.NEXT_PUBLIC_PROTOCOL_FUNDS || "",
+        MERCHANT_ROUTER: process.env.NEXT_PUBLIC_MERCHANT_ROUTER || "",
+        CREDIT_ORACLE: process.env.NEXT_PUBLIC_CREDIT_ORACLE || "",
+        USDC: process.env.NEXT_PUBLIC_MOCK_USDC || "",
         ORACLE: "0x0000000000000000000000000000000000000FD2"
     },
     SPOKES: {
         SEPOLIA: {
-            LIQUIDITY_VAULT: process.env.VITE_POOL_MANAGER || "", // In this archi, PoolManager acts as vault hub
-            USDC: process.env.VITE_MOCK_USDC || "",
-            USDT: process.env.VITE_MOCK_USDT || "",
-            AVAX: "", 
-            WBTC: "",
-            WETH: process.env.VITE_MOCK_WETH || "",
-            LINK: "",
-            BNB: process.env.VITE_MOCK_BNB || "",
+            LIQUIDITY_VAULT: process.env.NEXT_PUBLIC_POOL_MANAGER || "",
+            USDC: process.env.NEXT_PUBLIC_MOCK_USDC || "",
+            USDT: process.env.NEXT_PUBLIC_MOCK_USDT || "",
+            WETH: process.env.NEXT_PUBLIC_MOCK_WETH || "",
+            BNB: process.env.NEXT_PUBLIC_MOCK_BNB || "",
             PRIVATE_SWAPS: {
-                WETH: process.env.VITE_PRIVATE_SWAP_WETH || "",
-                BNB: process.env.VITE_PRIVATE_SWAP_BNB || "",
-                USDC: process.env.VITE_PRIVATE_SWAP_USDC || "",
-                USDT: process.env.VITE_PRIVATE_SWAP_USDT || ""
+                WETH: process.env.NEXT_PUBLIC_PRIVATE_SWAP_WETH || "",
+                BNB: process.env.NEXT_PUBLIC_PRIVATE_SWAP_BNB || "",
+                USDC: process.env.NEXT_PUBLIC_PRIVATE_SWAP_USDC || "",
+                USDT: process.env.NEXT_PUBLIC_PRIVATE_SWAP_USDT || ""
             },
             PRIVATE_LENDING: {
-                PRIVATE_LENDING_POOL: process.env.VITE_PRIVATE_LENDING_POOL || "",
-                PRIVATE_BORROW_MANAGER: process.env.VITE_PRIVATE_BORROW_MANAGER || "",
-                PRIVATE_COLLATERAL_VAULT: process.env.VITE_PRIVATE_COLLATERAL_VAULT || ""
+                PRIVATE_LENDING_POOL: process.env.NEXT_PUBLIC_PRIVATE_LENDING_POOL || "",
+                PRIVATE_BORROW_MANAGER: process.env.NEXT_PUBLIC_PRIVATE_BORROW_MANAGER || "",
+                PRIVATE_COLLATERAL_VAULT: process.env.NEXT_PUBLIC_PRIVATE_COLLATERAL_VAULT || ""
             },
             id: 11155111
         },
-        // Keeping structure for other chains but leaving empty/placeholders if not in .env
-        FUJI: { id: 43113, LIQUIDITY_VAULT: "", USDC: "", USDT: "", AVAX: "", WBTC: "", WETH: "", LINK: "", BNB: "" },
-        BASE_SEPOLIA: { id: 84532, LIQUIDITY_VAULT: "", USDC: "", USDT: "", AVAX: "", WBTC: "", WETH: "", LINK: "", BNB: "" },
-        CRONOS: { id: 338, LIQUIDITY_VAULT: "", USDC: "", USDT: "", AVAX: "", WBTC: "", WETH: "", LINK: "", BNB: "" },
-        GANACHE: { 
-            id: 1337,
-            LIQUIDITY_VAULT: "",
-            USDC: "",
-            USDT: "",
-            POOL_MANAGER: "",
-            CREDIT_ORACLE: "",
-            SCORE_MANAGER: "",
-            LOAN_ENGINE: "",
-            MERCHANT_ROUTER: ""
-        }
+        FUJI: { id: 43113, LIQUIDITY_VAULT: "", USDC: "", USDT: "", WETH: "", BNB: "" },
+        BASE_SEPOLIA: { id: 84532, LIQUIDITY_VAULT: "", USDC: "", USDT: "", WETH: "", BNB: "" },
+        CRONOS: { id: 338, LIQUIDITY_VAULT: "", USDC: "", USDT: "", WETH: "", BNB: "" }
     },
     SOURCE: {
-        LIQUIDITY_VAULT: process.env.VITE_POOL_MANAGER || "",
-        USDC: process.env.VITE_MOCK_USDC || "",
-        USDT: process.env.VITE_MOCK_USDT || ""
+        LIQUIDITY_VAULT: process.env.NEXT_PUBLIC_POOL_MANAGER || "",
+        USDC: process.env.NEXT_PUBLIC_MOCK_USDC || "",
+        USDT: process.env.NEXT_PUBLIC_MOCK_USDT || ""
     },
     PRIVATE_LENDING: {
-        PRIVATE_COLLATERAL_VAULT: process.env.VITE_PRIVATE_COLLATERAL_VAULT || "",
-        PRIVATE_BORROW_MANAGER: process.env.VITE_PRIVATE_BORROW_MANAGER || "",
-        PRIVATE_LENDING_POOL: process.env.VITE_PRIVATE_LENDING_POOL || "",
-        PRIVATE_LIQUIDATION_ENGINE: process.env.VITE_PRIVATE_LIQUIDATION_ENGINE || ""
-    },
-    LOCAL_HARDHAT: {
-        PRIVATE_COLLATERAL_VAULT: process.env.VITE_PRIVATE_COLLATERAL_VAULT || "",
-        PRIVATE_BORROW_MANAGER: process.env.VITE_PRIVATE_BORROW_MANAGER || "",
-        PRIVATE_LENDING_POOL: process.env.VITE_PRIVATE_LENDING_POOL || "",
-        PRIVATE_LIQUIDATION_ENGINE: process.env.VITE_PRIVATE_LIQUIDATION_ENGINE || ""
-    },
-    MOCK_TOKENS: {
-        LOCALHOST: {
-            WETH: process.env.VITE_MOCK_WETH || "",
-            USDC: process.env.VITE_MOCK_USDC || "",
-            WBTC: "",
-            BNB:  process.env.VITE_MOCK_BNB || ""
-        }
+        PRIVATE_COLLATERAL_VAULT: process.env.NEXT_PUBLIC_PRIVATE_COLLATERAL_VAULT || "",
+        PRIVATE_BORROW_MANAGER: process.env.NEXT_PUBLIC_PRIVATE_BORROW_MANAGER || "",
+        PRIVATE_LENDING_POOL: process.env.NEXT_PUBLIC_PRIVATE_LENDING_POOL || "",
+        PRIVATE_LIQUIDATION_ENGINE: process.env.NEXT_PUBLIC_PRIVATE_LIQUIDATION_ENGINE || ""
     }
 };
 
@@ -162,20 +132,6 @@ export const NETWORKS = {
         name: "Monad Testnet",
         rpc: "https://testnet-rpc.monad.xyz/",
         explorer: "https://testnet.monadexplorer.com",
-        icon: "ethereum"
-    },
-    GANACHE: {
-        id: 1337,
-        name: "Localnet",
-        rpc: "http://127.0.0.1:7545",
-        explorer: "",
-        icon: "ethereum"
-    },
-    LOCAL_HARDHAT: {
-        id: 31337,
-        name: "Hardhat Local",
-        rpc: "http://127.0.0.1:8545",
-        explorer: "",
         icon: "ethereum"
     }
 };

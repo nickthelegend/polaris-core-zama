@@ -14,6 +14,7 @@ import { LogOut, ShieldAlert, Copy, Terminal } from "lucide-react";
 import { toast } from "react-toastify";
 
 const LOCALNET_CHAIN_ID = 31337;
+const SEPOLIA_CHAIN_ID = 11155111;
 
 export function ConnectWalletButton() {
   const { address, isConnected, chain } = useAccount();
@@ -54,7 +55,29 @@ export function ConnectWalletButton() {
     );
   };
 
+  const switchToSepolia = () => {
+    switchChain(
+      { chainId: SEPOLIA_CHAIN_ID },
+      {
+        onError: () => {
+          (window as any).ethereum?.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: "0xAA36A7",
+              chainName: "Sepolia Test Network",
+              nativeCurrency: { name: "Sepolia ETH", symbol: "ETH", decimals: 18 },
+              rpcUrls: ["https://rpc.sepolia.org"],
+              blockExplorerUrls: ["https://sepolia.etherscan.io"],
+            }],
+          }).catch(console.error);
+        },
+      }
+    );
+  };
+
   const isLocalnet = chain?.id === LOCALNET_CHAIN_ID;
+  const isSepolia = chain?.id === SEPOLIA_CHAIN_ID;
+  const isSupportedNetwork = isLocalnet || isSepolia;
 
   if (!isConnected) {
     return (
@@ -80,10 +103,10 @@ export function ConnectWalletButton() {
             <span className="size-1.5 bg-primary-foreground rounded-full animate-pulse" />
             {truncateAddress(address!)}
           </div>
-          {!isLocalnet && (
+          {!isSupportedNetwork && (
             <span className="text-[7px] text-amber-400 font-bold uppercase tracking-widest animate-pulse flex items-center gap-1">
               <ShieldAlert className="size-2" />
-              WRONG_NETWORK // SWITCH_TO_LOCALNET
+              WRONG_NETWORK // SWITCH_TO_PROTOCOL
             </span>
           )}
         </div>
@@ -105,23 +128,37 @@ export function ConnectWalletButton() {
           {/* Current network */}
           <div className="bg-white/5 p-2 rounded-sm border border-white/5 flex justify-between items-center">
             <span className="text-[7px] text-white/30 uppercase">Network</span>
-            <span className={`text-[9px] font-black ${isLocalnet ? "text-primary" : "text-amber-400"}`}>
+            <span className={`text-[9px] font-black ${isSupportedNetwork ? "text-primary" : "text-amber-400"}`}>
               {chain?.name || "UNKNOWN"} ({chain?.id || "???"})
             </span>
           </div>
 
-          {/* Switch to Localnet */}
-          <DropdownMenuItem
-            onClick={switchToLocalnet}
-            className={`flex items-center justify-center gap-2 py-3 px-3 cursor-pointer border text-[10px] uppercase font-black tracking-widest transition-all ${
-              isLocalnet
-                ? "text-primary/40 border-primary/10 bg-primary/5 pointer-events-none"
-                : "text-primary hover:text-black hover:bg-primary border-primary/30"
-            }`}
-          >
-            <Terminal className="size-3" />
-            {isLocalnet ? "ON_LOCALNET ✓" : "SWITCH_TO_LOCALNET"}
-          </DropdownMenuItem>
+          {/* Network Switches */}
+          <div className="grid grid-cols-2 gap-2">
+            <DropdownMenuItem
+              onClick={switchToLocalnet}
+              className={`flex items-center justify-center gap-2 py-3 px-3 cursor-pointer border text-[10px] uppercase font-black tracking-widest transition-all ${
+                isLocalnet
+                  ? "text-primary/40 border-primary/10 bg-primary/5 pointer-events-none"
+                  : "text-primary hover:text-black hover:bg-primary border-primary/30"
+              }`}
+            >
+              <Terminal className="size-3" />
+              {isLocalnet ? "LOCALNET_" : "LOCALNET"}
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              onClick={switchToSepolia}
+              className={`flex items-center justify-center gap-2 py-3 px-3 cursor-pointer border text-[10px] uppercase font-black tracking-widest transition-all ${
+                isSepolia
+                  ? "text-primary/40 border-primary/10 bg-primary/5 pointer-events-none"
+                  : "text-primary hover:text-black hover:bg-primary border-primary/30"
+              }`}
+            >
+              <ShieldAlert className="size-3" />
+              {isSepolia ? "SEPOLIA_" : "SEPOLIA"}
+            </DropdownMenuItem>
+          </div>
 
           {/* Disconnect */}
           <DropdownMenuItem
@@ -134,7 +171,7 @@ export function ConnectWalletButton() {
         </div>
 
         <div className="bg-white/5 px-4 py-2 border-t border-white/10">
-          <span className="text-[7px] text-white/20 uppercase tracking-widest">Polaris_Terminal_v1.3 // Hardhat_Local</span>
+          <span className="text-[7px] text-white/20 uppercase tracking-widest">Polaris_Terminal_v1.3 // {isSepolia ? "Sepolia_Main" : "Hardhat_Local"}</span>
         </div>
       </DropdownMenuContent>
     </DropdownMenu>
