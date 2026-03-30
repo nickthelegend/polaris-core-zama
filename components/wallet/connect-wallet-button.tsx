@@ -1,6 +1,6 @@
 "use client";
 
-import { useAccount, useDisconnect } from "wagmi";
+import { useAccount, useDisconnect, useSwitchChain } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -10,12 +10,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Wallet, ShieldAlert, Copy, ExternalLink, Terminal } from "lucide-react";
+import { LogOut, ShieldAlert, Copy, Terminal } from "lucide-react";
 import { toast } from "react-toastify";
+
+const LOCALNET_CHAIN_ID = 31337;
 
 export function ConnectWalletButton() {
   const { address, isConnected, chain } = useAccount();
   const { disconnect } = useDisconnect();
+  const { switchChain } = useSwitchChain();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -28,12 +31,30 @@ export function ConnectWalletButton() {
   const copyAddress = () => {
     if (address) {
       navigator.clipboard.writeText(address);
-      toast.success("Address copied to clipboard!");
+      toast.success("Address copied!");
     }
   };
 
-  // 4443872029483122 is our Initia Rollup ID
-  const isWrongNetwork = chain?.id !== 4443872029483122;
+  const switchToLocalnet = () => {
+    switchChain(
+      { chainId: LOCALNET_CHAIN_ID },
+      {
+        onError: () => {
+          (window as any).ethereum?.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: "0x7A69",
+              chainName: "Hardhat Local",
+              nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+              rpcUrls: ["http://127.0.0.1:8545"],
+            }],
+          }).catch(console.error);
+        },
+      }
+    );
+  };
+
+  const isLocalnet = chain?.id === LOCALNET_CHAIN_ID;
 
   if (!isConnected) {
     return (
@@ -59,45 +80,61 @@ export function ConnectWalletButton() {
             <span className="size-1.5 bg-primary-foreground rounded-full animate-pulse" />
             {truncateAddress(address!)}
           </div>
-          {isWrongNetwork && (isConnected) && (
+          {!isLocalnet && (
             <span className="text-[7px] text-amber-400 font-bold uppercase tracking-widest animate-pulse flex items-center gap-1">
               <ShieldAlert className="size-2" />
-              WRONG_NETWORK // SWITCH_TO_INITIA
+              WRONG_NETWORK // SWITCH_TO_LOCALNET
             </span>
           )}
         </div>
       </DropdownMenuTrigger>
+
       <DropdownMenuContent align="end" className="bg-zinc-950 border-white/10 text-white font-mono min-w-[280px] p-0 overflow-hidden shadow-2xl">
+        {/* Address header */}
         <div className="bg-white/5 px-4 py-4 border-b border-white/10 flex flex-col gap-2 relative">
-            <div className="absolute top-4 right-4 flex gap-2">
-                <button onClick={copyAddress} className="text-white/20 hover:text-primary transition-colors">
-                    <Copy className="size-3" />
-                </button>
-            </div>
-          <span className="text-[8px] text-white/40 uppercase tracking-widest font-bold">Active_Session // INITIA_WEAVE</span>
+          <div className="absolute top-4 right-4">
+            <button onClick={copyAddress} className="text-white/20 hover:text-primary transition-colors">
+              <Copy className="size-3" />
+            </button>
+          </div>
+          <span className="text-[8px] text-white/40 uppercase tracking-widest font-bold">Active_Session</span>
           <span className="text-[10px] font-bold break-all text-primary/80 pr-6">{address}</span>
         </div>
-        
+
         <div className="p-3 flex flex-col gap-2">
-          <div className="grid grid-cols-1 gap-2">
-            <div className="bg-white/5 p-2 rounded-sm border border-white/5 flex justify-between items-center">
-                <span className="text-[7px] text-white/30 uppercase">Network_ID</span>
-                <span className={`text-[9px] font-black ${!isWrongNetwork ? "text-primary" : "text-amber-400"}`}>
-                    {chain?.name || "UNKNOWN"} ({chain?.id || "???"})
-                </span>
-            </div>
+          {/* Current network */}
+          <div className="bg-white/5 p-2 rounded-sm border border-white/5 flex justify-between items-center">
+            <span className="text-[7px] text-white/30 uppercase">Network</span>
+            <span className={`text-[9px] font-black ${isLocalnet ? "text-primary" : "text-amber-400"}`}>
+              {chain?.name || "UNKNOWN"} ({chain?.id || "???"})
+            </span>
           </div>
 
+          {/* Switch to Localnet */}
+          <DropdownMenuItem
+            onClick={switchToLocalnet}
+            className={`flex items-center justify-center gap-2 py-3 px-3 cursor-pointer border text-[10px] uppercase font-black tracking-widest transition-all ${
+              isLocalnet
+                ? "text-primary/40 border-primary/10 bg-primary/5 pointer-events-none"
+                : "text-primary hover:text-black hover:bg-primary border-primary/30"
+            }`}
+          >
+            <Terminal className="size-3" />
+            {isLocalnet ? "ON_LOCALNET ✓" : "SWITCH_TO_LOCALNET"}
+          </DropdownMenuItem>
+
+          {/* Disconnect */}
           <DropdownMenuItem
             onClick={() => disconnect()}
-            className="flex items-center justify-center gap-2 py-3 px-3 cursor-pointer text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20 text-[10px] uppercase font-black tracking-widest transition-all mt-2"
+            className="flex items-center justify-center gap-2 py-3 px-3 cursor-pointer text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20 text-[10px] uppercase font-black tracking-widest transition-all"
           >
             <LogOut className="size-3" />
             DISCONNECT_TERMINAL
           </DropdownMenuItem>
         </div>
+
         <div className="bg-white/5 px-4 py-2 border-t border-white/10">
-            <span className="text-[7px] text-white/20 uppercase tracking-widest">Polaris_Terminal_v1.3 // Initia_Core</span>
+          <span className="text-[7px] text-white/20 uppercase tracking-widest">Polaris_Terminal_v1.3 // Hardhat_Local</span>
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

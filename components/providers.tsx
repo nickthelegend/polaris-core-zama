@@ -1,8 +1,8 @@
 "use client";
 
 import { PropsWithChildren } from "react";
-import { createConfig, http, WagmiProvider } from "wagmi";
-import { mainnet, sepolia } from "wagmi/chains";
+import { http, WagmiProvider } from "wagmi";
+import { mainnet, sepolia, hardhat } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RainbowKitProvider, darkTheme, getDefaultConfig } from "@rainbow-me/rainbowkit";
 import "@rainbow-me/rainbowkit/styles.css";
@@ -14,8 +14,9 @@ import "react-toastify/dist/ReactToastify.css";
 const wagmiConfig = getDefaultConfig({
   appName: "Polaris Pay",
   projectId: "YOUR_PROJECT_ID",
-  chains: [sepolia, mainnet],
+  chains: [hardhat, sepolia, mainnet],
   transports: {
+    [hardhat.id]: http("http://127.0.0.1:8545"),
     [sepolia.id]: http(),
     [mainnet.id]: http(),
   },
