@@ -14,6 +14,10 @@ import PrivateCollateralVaultABI from './abis/PrivateCollateralVault.json';
 import PrivateBorrowManagerABI from './abis/PrivateBorrowManager.json';
 import PrivateLendingPoolABI from './abis/PrivateLendingPool.json';
 import PrivateLiquidationEngineABI from './abis/PrivateLiquidationEngine.json';
+import PrivateSwapUSDCABI from './abis/PrivateSwapUSDC.json';
+import PrivateSwapUSDTABI from './abis/PrivateSwapUSDT.json';
+import PrivateSwapWETHABI from './abis/PrivateSwapWETH.json';
+import PrivateSwapBNBABI from './abis/PrivateSwapBNB.json';
 
 export const CONTRACTS = {
     MASTER: {
@@ -36,6 +40,17 @@ export const CONTRACTS = {
             WETH: "0x35504AceAea50B3dbeF640618b535feDB2db680B",
             LINK: "0x1929264FC968770A72021fE29aD5d9e4344ef152",
             BNB: "0xd376252519348D8d219C250E374CE81A1B528BE5",
+            PRIVATE_SWAPS: {
+                WETH: "0x82e01223d51Eb87e16A03E24687EDF0F294da6f1",
+                BNB: "0x2bdCC0de6bE1f7D2ee689a0342D76F52E8EFABa3",
+                USDC: "0x7969c5eD335650692Bc04293B07F5BF2e7A673C0",
+                USDT: "0x7bc06c482DEAd17c0e297aFbC32f6e63d3846650"
+            },
+            PRIVATE_LENDING: {
+                PRIVATE_LENDING_POOL: "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
+                PRIVATE_BORROW_MANAGER: "0x1234567890123456789012345678901234567890", // placeholder if not found
+                PRIVATE_COLLATERAL_VAULT: "0x1234567890123456789012345678901234567890" 
+            },
             id: 11155111
         },
         FUJI: {
@@ -129,7 +144,11 @@ export const ABIS = {
     PrivateCollateralVault: PrivateCollateralVaultABI,
     PrivateBorrowManager: PrivateBorrowManagerABI,
     PrivateLendingPool: PrivateLendingPoolABI,
-    PrivateLiquidationEngine: PrivateLiquidationEngineABI
+    PrivateLiquidationEngine: PrivateLiquidationEngineABI,
+    PrivateSwapUSDC: PrivateSwapUSDCABI,
+    PrivateSwapUSDT: PrivateSwapUSDTABI,
+    PrivateSwapWETH: PrivateSwapWETHABI,
+    PrivateSwapBNB: PrivateSwapBNBABI
 };
 
 export const NETWORKS = {

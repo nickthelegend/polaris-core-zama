@@ -7,6 +7,9 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { parseUnits, formatUnits } from "viem"
 import { toast } from "sonner"
 import { AMM_DEPLOYMENTS, ERC20_ABI, AMM_ABI } from "@/lib/amm-contracts"
+import { useFhePrivateSwap } from "@/hooks/use-fhe-private-swap"
+import { CONTRACTS } from "@/lib/contracts"
+import { Shield, ShieldOff, Lock } from "lucide-react"
 
 const TOKENS = [
   { symbol: "WETH", address: AMM_DEPLOYMENTS.mockTokens.WETH, decimals: 18, color: "bg-blue-400" },
@@ -23,6 +26,9 @@ export function AMMSwapWidget() {
   const [toAmount, setToAmount] = useState("")
   const [isApproving, setIsApproving] = useState(false)
   const [isSwapping, setIsSwapping] = useState(false)
+  const [isConfidential, setIsConfidential] = useState(false)
+
+  const { depositEncrypted, swapEncrypted, loading: isFheLoading } = useFhePrivateSwap()
 
   // Get AMM pool address based on token pair
   const getPoolAddress = () => {
@@ -106,7 +112,7 @@ export function AMMSwapWidget() {
         abi: ERC20_ABI,
         functionName: "approve",
         args: [poolAddress as `0x${string}`, amount],
-      })
+      } as any)
       toast.success("Approval submitted!")
     } catch (error: any) {
       console.error("Approve error:", error)
@@ -119,6 +125,33 @@ export function AMMSwapWidget() {
   const handleSwap = async () => {
     if (!poolAddress || !fromAmount) return
     
+    if (isConfidential) {
+      setIsSwapping(true)
+      try {
+        const amountWei = parseUnits(fromAmount, fromToken.decimals)
+        const swapContract = (CONTRACTS.SPOKES.SEPOLIA.PRIVATE_SWAPS as any)[fromToken.symbol]
+        
+        if (!swapContract) {
+          toast.error(`No private swap contract for ${fromToken.symbol}`)
+          return
+        }
+
+        // Logic: Swap from current encrypted balance to target token
+        // In this demo, we use swapEncrypted. 
+        // User might need to deposit first if balance is 0.
+        // For simplicity in UI: we'll call swapEncrypted directly.
+        const hash = await swapEncrypted(swapContract, amountWei, toToken.address)
+        toast.success("Confidential Swap submitted!")
+        console.log("FHE Swap Hash:", hash)
+      } catch (error: any) {
+        console.error("FHE Swap error:", error)
+        toast.error(error?.message || "Confidential swap failed")
+      } finally {
+        setIsSwapping(false)
+      }
+      return
+    }
+
     setIsSwapping(true)
     try {
       const amount = parseUnits(fromAmount, fromToken.decimals)
@@ -127,7 +160,7 @@ export function AMMSwapWidget() {
         abi: AMM_ABI,
         functionName: "swap",
         args: [fromToken.address as `0x${string}`, amount],
-      })
+      } as any)
       toast.success("Swap submitted!")
     } catch (error: any) {
       console.error("Swap error:", error)
@@ -162,6 +195,25 @@ export function AMMSwapWidget() {
         <p className="text-xs text-foreground/40 mt-1">
           Swap tokens using our AMM pools with 0.3% fee
         </p>
+      </div>
+
+      {/* Confidential Toggle */}
+      <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-2xl p-4">
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-xl ${isConfidential ? "bg-primary/20 text-primary" : "bg-foreground/5 text-foreground/40"}`}>
+            {isConfidential ? <Shield size={18} /> : <ShieldOff size={18} />}
+          </div>
+          <div>
+            <p className="text-sm font-bold text-white">Confidential Mode</p>
+            <p className="text-[10px] text-foreground/40 uppercase tracking-widest">Powered by Zama FHEVM</p>
+          </div>
+        </div>
+        <button 
+          onClick={() => setIsConfidential(!isConfidential)}
+          className={`relative w-11 h-6 rounded-full transition-colors ${isConfidential ? "bg-primary" : "bg-foreground/20"}`}
+        >
+          <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${isConfidential ? "translate-x-5" : ""}`} />
+        </button>
       </div>
 
       {/* From Token */}
@@ -247,9 +299,11 @@ export function AMMSwapWidget() {
 
       {/* Info Box */}
       <div className="flex items-center gap-2 bg-[#05080f]/40 border border-border/20 rounded-xl px-4 py-3">
-        <Info size={14} className="text-foreground/30 flex-shrink-0" />
+        {isConfidential ? <Lock size={14} className="text-primary/60 flex-shrink-0" /> : <Info size={14} className="text-foreground/30 flex-shrink-0" />}
         <span className="text-xs text-foreground/40">
-          Swaps are executed on-chain via AMM pools
+          {isConfidential 
+            ? "Confidential swaps are executed via encrypted inputs — only you see the amount" 
+            : "Swaps are executed on-chain via AMM pools"}
         </span>
       </div>
 
@@ -273,11 +327,11 @@ export function AMMSwapWidget() {
       ) : (
         <button
           onClick={handleSwap}
-          disabled={!canSwap || isSwapping || isSwapConfirming}
+          disabled={!canSwap || isSwapping || isSwapConfirming || isFheLoading}
           className="w-full py-4 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          {(isSwapping || isSwapConfirming) && <Loader2 size={16} className="animate-spin" />}
-          {isSwapConfirming ? "Confirming..." : isSwapping ? "Swapping..." : "Swap"}
+          {(isSwapping || isSwapConfirming || isFheLoading) && <Loader2 size={16} className="animate-spin" />}
+          {isSwapConfirming ? "Confirming..." : (isSwapping || isFheLoading) ? "Processing..." : isConfidential ? "Confidential Swap" : "Swap"}
         </button>
       )}
     </div>

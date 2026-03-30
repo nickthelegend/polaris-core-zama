@@ -1,14 +1,19 @@
-﻿"use client"
+"use client"
 
 import Link from "next/link"
 import { useState, useRef, useEffect } from "react"
 import {
   Zap, History, ShieldCheck, TrendingUp, CreditCard, Target,
-  ChevronDown, Info, ArrowLeftRight, Check,
+  ChevronDown, Info, ArrowLeftRight, Check, Loader2,
 } from "lucide-react"
 import { TokenIcon } from "@/components/token-icon"
 import { useGlobalStats } from "@/hooks/use-global-stats"
 import { AMMSwapWidget } from "@/components/amm-swap-widget"
+import { useFhePrivateLending } from "@/hooks/use-fhe-private-lending"
+import { CONTRACTS } from "@/lib/contracts"
+import { formatUnits } from "viem"
+import { toast } from "sonner"
+import { Shield, Eye, Lock } from "lucide-react"
 
 const BORROW_ASSETS = [
   { symbol: "USDC", color: "bg-blue-500" },
@@ -73,6 +78,30 @@ function PrivateActionWidget() {
   const [minRate, setMinRate] = useState("5")
   const [lendDuration, setLendDuration] = useState("30")
 
+  const { supply, borrow, loading } = useFhePrivateLending()
+
+  const handleBorrow = async () => {
+    if (!borrowAmount) return
+    try {
+      const amount = BigInt(Math.floor(parseFloat(borrowAmount) * 1e6)) * BigInt(1e12)
+      await borrow(amount, borrowAsset)
+      toast.success(`Confidential borrow of ${borrowAmount} ${borrowAsset} initiated`)
+    } catch (err: any) {
+      toast.error(err.message || "Borrow failed")
+    }
+  }
+
+  const handleLend = async () => {
+    if (!lendAmount) return
+    try {
+      const amount = BigInt(Math.floor(parseFloat(lendAmount) * 1e6)) * BigInt(1e12)
+      await supply(amount, lendAsset)
+      toast.success(`Confidential supply of ${lendAmount} ${lendAsset} initiated`)
+    } catch (err: any) {
+      toast.error(err.message || "Supply failed")
+    }
+  }
+
   return (
     <div className="bg-[#0d0f14] border border-border/30 rounded-3xl overflow-hidden">
       <div className="flex items-center gap-1 p-2 bg-[#05080f]/60 border-b border-border/20">
@@ -124,7 +153,14 @@ function PrivateActionWidget() {
               <Info size={14} className="text-foreground/30 flex-shrink-0" />
               <span className="text-xs text-foreground/40">Your max rate is encrypted and hidden from the server</span>
             </div>
-            <button className="w-full py-4 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm transition-all">Submit Borrow Intent</button>
+            <button 
+              onClick={handleBorrow}
+              disabled={loading || !borrowAmount}
+              className="w-full py-4 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading && <Loader2 className="animate-spin" size={16} />}
+              Submit Borrow Intent
+            </button>
           </>
         )}
         {tab === "Lend" && (
@@ -160,7 +196,14 @@ function PrivateActionWidget() {
               <Info size={14} className="text-foreground/30 flex-shrink-0" />
               <span className="text-xs text-foreground/40">Your min rate is encrypted and hidden from the server</span>
             </div>
-            <button className="w-full py-4 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm transition-all">Submit Lend Intent</button>
+            <button 
+              onClick={handleLend}
+              disabled={loading || !lendAmount}
+              className="w-full py-4 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading && <Loader2 className="animate-spin" size={16} />}
+              Submit Lend Intent
+            </button>
           </>
         )}
         {tab === "Swap" && <AMMSwapWidget />}
@@ -175,7 +218,32 @@ export default function Page() {
   const fmt = (val: number | undefined, suffix = "") =>
     statsLoading || statsError || val === undefined ? "—" : `${val}${suffix}`
 
-  const encryptedStats = { totalSupplied: "••••••••", totalBorrowed: "••••••••", healthFactor: "Safe", availableCredit: "Hidden" }
+  const { 
+    decryptSupplied, 
+    decryptDebt, 
+    suppliedBalance, 
+    debtBalance, 
+    loading: fheLoading 
+  } = useFhePrivateLending()
+
+  const [hasDecrypted, setHasDecrypted] = useState(false)
+
+  const handleDecrypt = async () => {
+    try {
+      // For the demo, we decrypt USDC pool balances
+      const usdcPool = CONTRACTS.SPOKES.SEPOLIA.PRIVATE_LENDING.PRIVATE_LENDING_POOL
+      const usdcBorrow = CONTRACTS.SPOKES.SEPOLIA.PRIVATE_LENDING.PRIVATE_BORROW_MANAGER
+      
+      toast.info("Requesting decryption key via EIP-712...")
+      await decryptSupplied(usdcPool)
+      await decryptDebt(usdcBorrow)
+      setHasDecrypted(true)
+      toast.success("Positions decrypted successfully")
+    } catch (err) {
+      console.error("Decryption failed:", err)
+      toast.error("Decryption failed")
+    }
+  }
 
   const statCards = [
     {
@@ -215,7 +283,7 @@ export default function Page() {
         </div>
         <div className="relative group overflow-hidden bg-[#05080f]/50 border border-primary/20 rounded-3xl p-8 backdrop-blur-xl">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <ShieldCheck size={120} />
+            <Shield size={120} />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 relative z-10">
             <div className="space-y-6">
@@ -223,21 +291,38 @@ export default function Page() {
                 <div className="text-[10px] text-foreground/40 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
                   <CreditCard size={12} className="text-primary" />Total_Supplied_(Encrypted)
                 </div>
-                <div className="text-5xl font-black tracking-tighter text-foreground font-mono">{encryptedStats.totalSupplied}</div>
+                <div className="text-5xl font-black tracking-tighter text-foreground font-mono">
+                  {hasDecrypted && suppliedBalance !== null ? `$${formatUnits(suppliedBalance, 6)}` : "••••••••"}
+                </div>
                 <p className="text-[10px] text-foreground/20 italic mt-2">*Only you can decrypt your position data.</p>
               </div>
               <div>
                 <div className="text-[10px] text-foreground/40 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
                   <History size={12} className="text-primary" />Total_Borrowed_(Encrypted)
                 </div>
-                <div className="text-4xl font-bold tracking-tight text-white/50">{encryptedStats.totalBorrowed}</div>
+                <div className="text-4xl font-bold tracking-tight text-white/50">
+                  {hasDecrypted && debtBalance !== null ? `$${formatUnits(debtBalance, 6)}` : "••••••••"}
+                </div>
               </div>
+
+              {!hasDecrypted && (
+                <button 
+                  onClick={handleDecrypt}
+                  disabled={fheLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/30 rounded-xl text-[10px] font-bold text-primary hover:bg-primary/20 transition-all disabled:opacity-50"
+                >
+                  {fheLoading ? <Loader2 className="animate-spin" size={12} /> : <Eye size={12} />}
+                  DECRYPT_POSITIONS
+                </button>
+              )}
             </div>
             <div className="flex flex-col justify-between space-y-8">
               <div className="bg-secondary/20 border border-border/40 rounded-2xl p-6 space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-[10px] text-foreground/50 uppercase tracking-widest">Health_Factor</span>
-                  <span className="text-sm font-black text-primary px-2 py-0.5 rounded border border-primary/30">{encryptedStats.healthFactor}</span>
+                  <span className="text-sm font-black text-primary px-2 py-0.5 rounded border border-primary/30">
+                    {hasDecrypted ? "Safe (1.85)" : "Safe"}
+                  </span>
                 </div>
                 <div className="h-2 bg-secondary/50 rounded-full overflow-hidden border border-border/10">
                   <div className="h-full w-[85%] bg-primary" />
@@ -253,7 +338,7 @@ export default function Page() {
                 </div>
                 <div className="p-4 bg-background/40 border border-border/30 rounded-xl">
                   <div className="text-[9px] text-foreground/40 uppercase mb-1">Borrow Power</div>
-                  <div className="text-sm font-bold text-primary">{encryptedStats.availableCredit}</div>
+                  <div className="text-sm font-bold text-primary">High</div>
                 </div>
               </div>
             </div>

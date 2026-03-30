@@ -6,7 +6,7 @@ import { TokenIcon } from "@/components/token-icon"
 import { useFhePrivateLending } from "@/hooks/use-fhe-private-lending"
 import { usePolaris } from "@/hooks/use-polaris"
 import { TOKENS, getTokenAddress } from "@/config/tokens"
-import { NETWORKS } from "@/lib/contracts"
+import { CONTRACTS, NETWORKS } from "@/lib/contracts"
 
 export type ModalMode = "supply" | "borrow"
 
@@ -45,7 +45,7 @@ export function LendingActionModal({
   const [done, setDone] = useState(false)
   const [walletBalance, setWalletBalance] = useState<string | null>(null)
 
-  const { supply, borrow, depositCollateral, loading } = useFhePrivateLending()
+  const { supply, borrow, depositCollateral, loading, encryptAmount } = useFhePrivateLending()
   const { getTokenBalance, address, chainId } = usePolaris()
 
   const isSupply = mode === "supply"
@@ -91,14 +91,24 @@ export function LendingActionModal({
     try {
       // Step 1 — encrypt
       addLog({ id: 1, step: "Encrypting input", detail: `${amount} ${pool.symbol} → euint64 ciphertext`, status: "pending" })
-      await new Promise(r => setTimeout(r, 500))
-      updateLog(1, { status: "done", detail: `${amount} ${pool.symbol} encrypted`, encrypted: randomHex() })
+      
+      const addresses = networkId === NETWORKS.SEPOLIA.id 
+        ? CONTRACTS.SPOKES.SEPOLIA.PRIVATE_LENDING 
+        : CONTRACTS.PRIVATE_LENDING;
+        
+      const { handle, proof } = await encryptAmount(wei, addresses.PRIVATE_LENDING_POOL);
+      
+      updateLog(1, { 
+        status: "done", 
+        detail: `${amount} ${pool.symbol} encrypted`, 
+        encrypted: handle 
+      })
 
       // Step 2 — collateral (borrow only)
       if (!isSupply) {
-        addLog({ id: 2, step: "Depositing collateral", detail: `depositCollateral(${parseFloat(amount) * 2} ${pool.symbol}) — 2× for health factor`, status: "pending" })
-        await depositCollateral(wei * BigInt(2))
-        updateLog(2, { status: "done", detail: "Collateral deposited", encrypted: randomHex() })
+        addLog({ id: 2, step: "Depositing collateral", detail: `depositCollateral(...) — 2× for health factor`, status: "pending" })
+        const collalHash = await depositCollateral(wei * BigInt(2))
+        updateLog(2, { status: "done", detail: `Collateral deposited: ${collalHash.slice(0, 10)}...` })
       }
 
       // Step 3 — main action
@@ -112,7 +122,7 @@ export function LendingActionModal({
         id: 4,
         step: "On-chain state updated",
         detail: `euint64 ${isSupply ? "suppliedAmounts" : "debtAmounts"}[user] updated`,
-        encrypted: randomHex(),
+        encrypted: handle,
         status: "done",
       })
 

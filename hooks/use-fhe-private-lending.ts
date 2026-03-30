@@ -3,92 +3,7 @@ import { ethers } from 'ethers';
 import { usePolaris } from '@/hooks/use-polaris';
 import { CONTRACTS, ABIS, NETWORKS } from '@/lib/contracts';
 
-// FHEVM SDK types — resolved at runtime to support both mock (Hardhat) and
-// production (Zama relayer) environments without hard-coding a single import.
-type FhevmInstance = {
-  createEncryptedInput: (contractAddress: string, userAddress: string) => {
-    add64: (value: bigint) => { encrypt: () => Promise<{ handles: Uint8Array[]; inputProof: Uint8Array }> };
-  };
-  generateKeypair: () => { publicKey: Uint8Array; privateKey: Uint8Array };
-  createEIP712: (publicKey: Uint8Array, contractAddress: string) => object;
-  userDecrypt: (
-    handle: string,
-    privateKey: Uint8Array,
-    publicKey: Uint8Array,
-    signature: string,
-    contractAddress: string,
-    userAddress: string
-  ) => Promise<bigint>;
-};
-
-// Lazily resolved FHEVM instance (mock or production).
-let _fhevmInstance: FhevmInstance | null = null;
-
-/**
- * Build a browser-safe mock FHEVM instance for local Hardhat development.
- * The Hardhat node runs in `fhevm.mocked: true` mode, which means it accepts
- * plaintext values wrapped in the externalEuint64 format. We encode the amount
- * as a 32-byte big-endian handle and use an empty proof — the mock coprocessor
- * accepts this without a real ZK proof.
- */
-function createMockFhevmInstance(): FhevmInstance {
-  return {
-    createEncryptedInput: (_contractAddress: string, _userAddress: string) => ({
-      add64: (value: bigint) => ({
-        encrypt: async () => {
-          // Encode value as 32-byte big-endian Uint8Array (externalEuint64 handle)
-          const handle = new Uint8Array(32);
-          let v = value;
-          for (let i = 31; i >= 0 && v > BigInt(0); i--) {
-            handle[i] = Number(v & BigInt(0xff));
-            v >>= BigInt(8);
-          }
-          return { handles: [handle], inputProof: new Uint8Array(0) };
-        },
-      }),
-    }),
-    generateKeypair: () => ({
-      publicKey: new Uint8Array(32),
-      privateKey: new Uint8Array(32),
-    }),
-    createEIP712: (_publicKey: Uint8Array, _contractAddress: string) => ({
-      domain: { name: 'MockFHEVM', version: '1', chainId: 31337 },
-      types: { Reencrypt: [{ name: 'publicKey', type: 'bytes32' }] },
-      message: { publicKey: '0x' + '00'.repeat(32) },
-    }),
-    userDecrypt: async (
-      handle: string,
-      _privateKey: Uint8Array,
-      _publicKey: Uint8Array,
-      _signature: string,
-      _contractAddress: string,
-      _userAddress: string
-    ): Promise<bigint> => {
-      // In mock mode the handle IS the plaintext value (big-endian hex)
-      try {
-        return BigInt(handle);
-      } catch {
-        return BigInt(0);
-      }
-    },
-  };
-}
-
-async function getFhevmInstance(): Promise<FhevmInstance> {
-  if (_fhevmInstance) return _fhevmInstance;
-
-  // Try the Zama relayer SDK (production browser SDK) if available.
-  // Falls back to a browser-safe mock for local Hardhat development.
-  try {
-    const mod = await import('@zama-fhe/relayer-sdk');
-    _fhevmInstance = await mod.createInstance();
-  } catch {
-    // No production SDK installed — use the mock instance for local dev.
-    _fhevmInstance = createMockFhevmInstance();
-  }
-
-  return _fhevmInstance!;
-}
+import { getZamaInstance, encrypt64 } from '@/lib/fhevm';
 
 // ─── State shape ────────────────────────────────────────────────────────────
 
@@ -141,14 +56,8 @@ export function useFhePrivateLending() {
     ): Promise<{ handle: string; proof: string }> => {
       if (!address) throw new Error('Wallet not connected');
 
-      const fhevm = await getFhevmInstance();
-      const input = fhevm.createEncryptedInput(contractAddress, address);
-      const { handles, inputProof } = await input.add64(amount).encrypt();
-
-      // handles[0] is the externalEuint64 bytes32 handle; inputProof is the ZK proof.
-      const handle = '0x' + Buffer.from(handles[0]).toString('hex');
-      const proof = '0x' + Buffer.from(inputProof).toString('hex');
-      return { handle, proof };
+      const { handles, inputProof } = await encrypt64(contractAddress as `0x${string}`, address as `0x${string}`, amount);
+      return { handle: handles[0], proof: inputProof };
     },
     [address]
   );
@@ -159,7 +68,7 @@ export function useFhePrivateLending() {
     async (encryptedHandle: string, contractAddress: string): Promise<bigint | null> => {
       if (!address) return null;
       try {
-        const fhevm = await getFhevmInstance();
+        const fhevm = await getZamaInstance();
         const { publicKey, privateKey } = fhevm.generateKeypair();
         const eip712 = fhevm.createEIP712(publicKey, contractAddress);
 
