@@ -402,15 +402,33 @@ export function usePolaris() {
             const count = await loanEngine.loanCount();
             const loans = [];
 
+            // Cache token decimals to avoid repeated calls
+            const decimalsCache: Record<string, number> = {};
+
             for (let i = 0; i < count; i++) {
                 const loan = await loanEngine.loans(i);
                 if (loan.borrower.toLowerCase() === address.toLowerCase()) {
+                    // Get token decimals (cached)
+                    let decimals = 18;
+                    const tokenAddr = loan.poolToken;
+                    if (tokenAddr && tokenAddr !== ethers.ZeroAddress) {
+                        if (decimalsCache[tokenAddr] !== undefined) {
+                            decimals = decimalsCache[tokenAddr];
+                        } else {
+                            try {
+                                const token = await getContract(tokenAddr, ABIS.MockERC20, id, false);
+                                decimals = Number(await token.decimals());
+                                decimalsCache[tokenAddr] = decimals;
+                            } catch { }
+                        }
+                    }
+
                     loans.push({
                         id: i,
-                        principal: formatUnits(loan.principal, 18),
-                        interest: formatUnits(loan.interestAmount, 18),
-                        totalDebt: formatUnits(loan.principal + loan.interestAmount, 18),
-                        repaid: formatUnits(loan.repaid, 18),
+                        principal: formatUnits(loan.principal, decimals),
+                        interest: formatUnits(loan.interestAmount, decimals),
+                        totalDebt: formatUnits(loan.principal + loan.interestAmount, decimals),
+                        repaid: formatUnits(loan.repaid, decimals),
                         startTime: Number(loan.startTime),
                         status: Number(loan.status),
                         poolToken: loan.poolToken

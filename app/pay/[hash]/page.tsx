@@ -113,8 +113,8 @@ export default function CheckoutPage() {
     }
 
     const targetAddress = bill.merchant?.escrow_contract || bill.merchant?.user?.wallet_address
-    if (!targetAddress) {
-      toast.error("Merchant settlement address not configured.")
+    if (!targetAddress || targetAddress === "0x0000000000000000000000000000000000000000") {
+      toast.error("Merchant settlement address not configured. Ask merchant to set wallet.")
       return
     }
 
@@ -122,6 +122,29 @@ export default function CheckoutPage() {
     try {
       const { config } = getMasterConfig() as any
       const usdcAddress = config.USDC
+
+      if (!usdcAddress) {
+        throw new Error("USDC address not configured")
+      }
+
+      // Verify we're on Sepolia
+      if (typeof window !== "undefined" && (window as any).ethereum) {
+        const chainIdHex = await (window as any).ethereum.request({ method: "eth_chainId" })
+        const currentChain = parseInt(chainIdHex, 16)
+        if (currentChain !== 11155111) {
+          toast.warn("Switching to Sepolia...")
+          try {
+            await (window as any).ethereum.request({
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: "0xaa36a7" }],
+            })
+          } catch (switchErr: any) {
+            throw new Error("Please switch to Sepolia network in your wallet")
+          }
+        }
+      }
+
+      console.log(`[POLARIS] Payment details:`, { targetAddress, amount: bill.amount, usdcAddress, paymentMode })
 
       // Execute on-chain payment (full amount for both modes)
       console.log(`[POLARIS] Authorizing ${paymentMode.toUpperCase()} Credit via MerchantRouter...`)
