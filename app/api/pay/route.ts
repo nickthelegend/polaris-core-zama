@@ -8,7 +8,7 @@ export async function POST(req: Request) {
   const userAddress = String(body?.userAddress ?? "0x...");
 
   const txId = `0x${Math.random().toString(16).slice(2, 42)}`;
-  const explorerUrl = `https://explorer.usc-testnet2.creditcoin.network/tx/${txId}`;
+  const explorerUrl = `https://sepolia.etherscan.io/tx/${txId}`;
 
   try {
     const db = await getDb();

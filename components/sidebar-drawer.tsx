@@ -10,7 +10,7 @@ import {
   PiggyBank,
   ShoppingBag,
   Gauge,
-  FileText,
+  CreditCard,
   History,
   LogOut,
   User
@@ -21,10 +21,10 @@ import { cn } from "@/lib/utils"
 const NAV_ITEMS = [
   { href: "/pools", label: "POOLS", icon: PiggyBank },
   { href: "/borrow", label: "BORROW", icon: ShoppingBag },
+  { href: "/credit", label: "CREDIT", icon: CreditCard },
   { href: "/positions", label: "POSITIONS", icon: Gauge },
   { href: "/transactions", label: "ACTIVITY", icon: History },
   { href: "/faucet", label: "FAUCET", icon: LayoutDashboard },
-  { href: "/docs", label: "DOCS", icon: FileText },
 ]
 
 export function SidebarDrawer({ open, onOpenChange }: { open?: boolean; onOpenChange?: (v: boolean) => void }) {

@@ -49,10 +49,7 @@ export const CONTRACTS = {
                 PRIVATE_COLLATERAL_VAULT: process.env.NEXT_PUBLIC_PRIVATE_COLLATERAL_VAULT || ""
             },
             id: 11155111
-        },
-        FUJI: { id: 43113, LIQUIDITY_VAULT: "", USDC: "", USDT: "", WETH: "", BNB: "" },
-        BASE_SEPOLIA: { id: 84532, LIQUIDITY_VAULT: "", USDC: "", USDT: "", WETH: "", BNB: "" },
-        CRONOS: { id: 338, LIQUIDITY_VAULT: "", USDC: "", USDT: "", WETH: "", BNB: "" }
+        }
     },
     SOURCE: {
         LIQUIDITY_VAULT: process.env.NEXT_PUBLIC_POOL_MANAGER || "",
@@ -98,13 +95,6 @@ export const ABIS = {
 };
 
 export const NETWORKS = {
-    USC: {
-        id: 102036,
-        name: "USC Hub V2",
-        rpc: "https://rpc.usc-testnet2.creditcoin.network",
-        explorer: "https://explorer.usc-testnet2.creditcoin.network",
-        icon: "creditcoin"
-    },
     SEPOLIA: {
         id: 11155111,
         name: "Eth Sepolia",
@@ -112,39 +102,11 @@ export const NETWORKS = {
         explorer: "https://sepolia.etherscan.io",
         icon: "ethereum"
     },
-    FUJI: {
-        id: 43113,
-        name: "Avalanche Fuji",
-        rpc: "https://api.avax-test.network/ext/bc/C/rpc",
-        explorer: "https://testnet.snowtrace.io",
-        icon: "avalanche"
-    },
-    BASE_SEPOLIA: {
-        id: 84532,
-        name: "Base Sepolia",
-        rpc: "https://base-sepolia.api.onfinality.io/public",
-        explorer: "https://sepolia.basescan.org",
-        icon: "base"
-    },
-    CRONOS: {
-        id: 338,
-        name: "Cronos Testnet",
-        rpc: "https://evm-t3.cronos.org",
-        explorer: "https://explorer.cronos.org/testnet",
-        icon: "ethereum"
-    },
-    MONAD: {
-        id: 20143,
-        name: "Monad Testnet",
-        rpc: "https://testnet-rpc.monad.xyz/",
-        explorer: "https://testnet.monadexplorer.com",
-        icon: "ethereum"
-    },
     LOCAL_HARDHAT: {
         id: 31337,
         name: "Hardhat Local",
         rpc: "http://127.0.0.1:8545",
-        explorer: "https://sepolia.etherscan.io", // Fallback to Sepolia for local
+        explorer: "https://sepolia.etherscan.io",
         icon: "ethereum"
     }
 };

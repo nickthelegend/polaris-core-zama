@@ -101,7 +101,7 @@ export default function SupportPage() {
                                     { title: "REPAYMENT_LOGIC", desc: "Understanding automated BNPL settlements and health factor protection thresholds.", icon: Calculator },
                                     { title: "NETWORK_LATENCY_FAQ", desc: "Diagnostics for inter-chain settlement delay and RPC endpoint synchronization.", icon: Monitor },
                                     { title: "VAULT_ARCHITECTURE_SEC", desc: "Overview of L3 secure vault implementations and collateral isolation layers.", icon: Shield },
-                                    { title: "BRIDGING_PROTOCOL_TX", desc: "Documentation on Creditcoin and Ethereum mainnet asset bridging procedures.", icon: LinkIcon }
+                                    { title: "BRIDGING_PROTOCOL_TX", desc: "Documentation on Sepolia asset bridging procedures.", icon: LinkIcon }
                                 ].map((item, idx) => (
                                     <div key={idx} className="p-4 border-b border-white/5 hover:bg-primary/5 transition-colors cursor-pointer group">
                                         <div className="flex items-start justify-between">
@@ -132,7 +132,7 @@ export default function SupportPage() {
                                 </h3>
                             </div>
                             <p className="text-white/70 text-[11px] leading-relaxed font-mono uppercase">
-                                <span className="text-primary font-bold">[!]</span> Maintenance scheduled for <span className="text-white font-bold">CREDITCOIN_MAINNET</span> in 12 hours. Bridge operations may experience elevated latency.
+                                <span className="text-primary font-bold">[!]</span> Maintenance scheduled for <span className="text-white font-bold">SEPOLIA_TESTNET</span> in 12 hours. Bridge operations may experience elevated latency.
                             </p>
                         </div>
                     </section>

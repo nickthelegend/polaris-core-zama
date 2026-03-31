@@ -8,7 +8,7 @@ export async function generateProofFor(
     txHash: string,
     chainKey: number,
     proofServerUrl: string,
-    creditcoinRpc: JsonRpcApiProvider,
+    sepoliaRpc: JsonRpcApiProvider,
     sourceChainRpc: JsonRpcApiProvider
 ): Promise<proofGenerator.ProofGenerationResult> {
     console.time(`proof-gen-${txHash}`);
@@ -30,7 +30,7 @@ export async function generateProofFor(
         console.log(`[PROVER] Transaction ${txHash} found in block ${blockNumber}`);
 
         // Now that we have the block number, we can setup the chain info provider
-        const info = new chainInfo.PrecompileChainInfoProvider(creditcoinRpc);
+        const info = new chainInfo.PrecompileChainInfoProvider(sepoliaRpc);
 
         console.log(`[PROVER] Waiting for block ${blockNumber} attestation on Hub (chain ${chainKey})...`);
 

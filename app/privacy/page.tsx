@@ -35,7 +35,7 @@ export default function PrivacyPage() {
                                     <div className="space-y-6">
                                         <div className="flex gap-4 items-start">
                                             <span className="text-primary font-bold mt-1 text-[10px] tracking-tight">{`>>`}</span>
-                                            <p><strong className="text-white uppercase tracking-tight">TRANSACTION_IMMUTABILITY:</strong> All financial interactions (deposits, withdrawals, BNPL executions) are recorded on the Creditcoin blockchain. These records are permanent and pseudonymous.</p>
+                                            <p><strong className="text-white uppercase tracking-tight">TRANSACTION_IMMUTABILITY:</strong> All financial interactions (deposits, withdrawals, BNPL executions) are recorded on the Sepolia blockchain. These records are permanent and pseudonymous.</p>
                                         </div>
                                         <div className="flex gap-4 items-start">
                                             <span className="text-primary font-bold mt-1 text-[10px] tracking-tight">{`>>`}</span>

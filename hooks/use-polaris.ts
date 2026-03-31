@@ -4,6 +4,7 @@ import { useAccount, useWalletClient } from 'wagmi';
 import { CONTRACTS, ABIS, NETWORKS } from '@/lib/contracts';
 import { logger } from '@/lib/logger';
 import { parseRevertReason } from '@/lib/revert-mapper';
+import { computeCreditLine, generateBNPLSchedule } from '@/lib/credit-utils';
 
 export function usePolaris() {
     const { address, isConnected, chainId: wagmiChainId } = useAccount();
@@ -60,11 +61,7 @@ export function usePolaris() {
             if (address) {
                 const balance = await token.balanceOf(address);
                 if (balance < amountWei) {
-                    const isTestnet = networkId === NETWORKS.SEPOLIA.id ||
-                        networkId === NETWORKS.FUJI.id ||
-                        networkId === NETWORKS.BASE_SEPOLIA.id ||
-                        networkId === NETWORKS.CRONOS.id ||
-                        networkId === NETWORKS.GANACHE.id;
+                    const isTestnet = networkId === NETWORKS.SEPOLIA.id;
                     if (isTestnet) {
                         logger.info('POLARIS_CORE', `Insufficient balance(${formatUnits(balance, decimals)}). Auto-minting...`, { address, networkId });
                         try {
@@ -559,6 +556,37 @@ export function usePolaris() {
         }
     }, [address, getMasterConfig, getContract]);
 
+    const getCreditLine = useCallback(async (): Promise<number> => {
+        try {
+            if (!address) return 0;
+            const collateralStr = await getUserTotalCollateral();
+            const collateral = parseFloat(collateralStr);
+
+            const { config, id } = getMasterConfig();
+            const loanEngine = await getContract(config.LOAN_ENGINE, ABIS.LoanEngine, id, false);
+            const activeDebtWei = await loanEngine.userActiveDebt(address);
+            const activeDebt = parseFloat(formatUnits(activeDebtWei, 18));
+
+            return computeCreditLine(collateral, activeDebt);
+        } catch (error) {
+            logger.error('POLARIS_READ', "Fetch credit line failed", { error });
+            return 0;
+        }
+    }, [address, getMasterConfig, getContract, getUserTotalCollateral]);
+
+    const getLoanSchedule = useCallback(async (loanId: number): Promise<number[]> => {
+        try {
+            const { config, id } = getMasterConfig();
+            const loanEngine = await getContract(config.LOAN_ENGINE, ABIS.LoanEngine, id, false);
+            const loan = await loanEngine.loans(loanId);
+            const startTime = Number(loan.startTime);
+            return generateBNPLSchedule(startTime);
+        } catch (error) {
+            logger.error('POLARIS_READ', "Fetch loan schedule failed", { error, loanId });
+            return [];
+        }
+    }, [getMasterConfig, getContract]);
+
     return {
         loading,
         txHash,
@@ -585,6 +613,8 @@ export function usePolaris() {
         chainId,
         getAPY,
         updateCreditProfile,
-        getExternalNetValue
+        getExternalNetValue,
+        getCreditLine,
+        getLoanSchedule
     };
 }

@@ -12,7 +12,7 @@ export function usePolarisPay() {
     const [txHash, setTxHash] = useState<string | null>(null);
 
     // Mock wallet for compatibility with existing EVM logic.
-    // Since this is Cardano native, but the backend/smart contracts are EVM (Creditcoin Hub),
+    // Since this is Cardano native, but the backend/smart contracts are EVM (Sepolia),
     // we use window.ethereum as the fallback signer for EVM interactions.
     const wallet = {
         address: walletAddress,
@@ -39,23 +39,12 @@ export function usePolarisPay() {
 
     const getSpokeConfig = useCallback((networkId: number) => {
         if (networkId === NETWORKS.SEPOLIA.id) return CONTRACTS.SPOKES.SEPOLIA;
-        if (networkId === NETWORKS.FUJI.id) return CONTRACTS.SPOKES.FUJI;
-        if (networkId === NETWORKS.BASE_SEPOLIA.id) return CONTRACTS.SPOKES.BASE_SEPOLIA;
-        if (networkId === NETWORKS.CRONOS.id) return CONTRACTS.SPOKES.CRONOS;
-        if (networkId === NETWORKS.GANACHE.id) return CONTRACTS.SPOKES.GANACHE;
-        return CONTRACTS.SOURCE; // Fallback
+        return CONTRACTS.SPOKES.SEPOLIA; // Default to Sepolia
     }, []);
 
     const getMasterConfig = useCallback(() => {
-        const chainIdStr = wallet?.chainId?.toString() || '';
-        const isLocal = chainIdStr.includes('1337') || chainIdStr === '0x539' || chainIdStr === '539';
-
-        logger.debug('POLARIS_PAY', `Chain: ${chainIdStr}, isLocal: ${isLocal}`);
-
-        return isLocal
-            ? { config: CONTRACTS.SPOKES.GANACHE, id: NETWORKS.GANACHE.id }
-            : { config: CONTRACTS.MASTER, id: NETWORKS.SEPOLIA.id };
-    }, [wallet?.chainId]);
+        return { config: CONTRACTS.MASTER, id: NETWORKS.SEPOLIA.id };
+    }, []);
 
     const getContract = useCallback(async (address: string, abi: any, networkId: number, useSigner = true) => {
         const net = Object.values(NETWORKS).find(n => n.id === networkId);
@@ -103,10 +92,7 @@ export function usePolarisPay() {
                 const balance = await token.balanceOf(wallet.address);
                 if (balance < amountWei) {
                     const isTestnet = networkId === NETWORKS.SEPOLIA.id ||
-                        networkId === NETWORKS.FUJI.id ||
-                        networkId === NETWORKS.BASE_SEPOLIA.id ||
-                        networkId === NETWORKS.CRONOS.id ||
-                        networkId === NETWORKS.GANACHE.id;
+                        networkId === NETWORKS.LOCAL_HARDHAT.id;
                     if (isTestnet) {
                         logger.info('POLARIS_PAY', `Insufficient balance(${formatUnits(balance, decimals)}). Auto-minting...`, { address: wallet.address, networkId });
                         try {

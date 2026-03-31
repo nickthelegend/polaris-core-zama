@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as credit from "../credit.js";
 import type * as merchants from "../merchants.js";
 import type * as seed from "../seed.js";
 
@@ -18,6 +19,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  credit: typeof credit;
   merchants: typeof merchants;
   seed: typeof seed;
 }>;

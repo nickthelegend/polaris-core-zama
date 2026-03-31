@@ -11,10 +11,10 @@ import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button"
 const NAV = [
   { href: "/pools", label: "Pools" },
   { href: "/borrow", label: "Borrow" },
+  { href: "/credit", label: "Credit" },
   { href: "/positions", label: "Positions" },
   { href: "/transactions", label: "Activity" },
   { href: "/faucet", label: "Faucet" },
-  { href: "/docs", label: "Docs" },
 ]
 
 export function AppHeader() {

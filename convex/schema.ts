@@ -33,7 +33,7 @@ export default defineSchema({
     category: v.optional(v.string()),
     clientId: v.string(),
     clientSecret: v.string(),
-    network: v.string(), // e.g. creditcoin_testnet
+    network: v.string(), // e.g. sepolia
     status: v.string(), // active, inactive
     webhookUrl: v.optional(v.string()),
   })
@@ -145,4 +145,36 @@ export default defineSchema({
   })
     .index("by_hash", ["hash"])
     .index("by_app", ["appId"]),
+
+  splitPlans: defineTable({
+    userAddress: v.string(),
+    loanId: v.number(),
+    totalAmount: v.number(),
+    installments: v.array(
+      v.object({
+        index: v.number(),
+        amount: v.number(),
+        dueDate: v.number(),
+        status: v.union(v.literal("paid"), v.literal("upcoming"), v.literal("overdue")),
+        paidAt: v.optional(v.number()),
+        txHash: v.optional(v.string()),
+      })
+    ),
+    merchantAddress: v.string(),
+    billHash: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_user_address", ["userAddress"])
+    .index("by_loan_id", ["loanId"]),
+
+  repaymentHistory: defineTable({
+    userAddress: v.string(),
+    loanId: v.number(),
+    amount: v.number(),
+    txHash: v.string(),
+    loanType: v.union(v.literal("bnpl"), v.literal("split3")),
+    timestamp: v.number(),
+  })
+    .index("by_user_address", ["userAddress"])
+    .index("by_loan_id", ["loanId"]),
 });

@@ -245,7 +245,7 @@ export default function LimitsPage() {
                       onClick={applyAttestation}
                       className="w-full bg-primary text-black font-black py-2 rounded-sm text-[10px] uppercase tracking-widest hover:bg-white transition-all shadow-lg"
                     >
-                      Push_to_Creditcoin_v2
+                      Push_to_Sepolia
                     </button>
                   </div>
                 )}
@@ -269,7 +269,7 @@ export default function LimitsPage() {
                 2. ATTESTATION: The backend signs an ECDSA payload with your net equity and a timestamp-bound nonce.
               </p>
               <p>
-                3. ON-CHAIN_VERIFICATION: The Creditcoin Hub verifies the signature and updates your identity state.
+                3. ON-CHAIN_VERIFICATION: The Sepolia network verifies the signature and updates your identity state.
               </p>
             </div>
           </div>

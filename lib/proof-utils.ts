@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 
 /**
- * Interface for Creditcoin V2 Native Query Proof
+ * Interface for Native Query Proof
  */
 export interface NativeQueryProof {
     chainKey: number;
@@ -14,7 +14,7 @@ export interface NativeQueryProof {
 }
 
 /**
- * Utility to format and validate proof data for Creditcoin V2
+ * Utility to format and validate proof data
  */
 export const ProofUtils = {
     /**

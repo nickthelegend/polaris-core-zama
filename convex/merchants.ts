@@ -145,7 +145,7 @@ export const createApp = mutation({
             clientId,
             clientSecret,
             status: "active",
-            network: "creditcoin_testnet",
+            network: "sepolia",
         });
 
         return appId;

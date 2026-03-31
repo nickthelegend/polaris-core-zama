@@ -4,7 +4,7 @@ import { generateProofFor } from "@/lib/gluwa-prover";
 import { NETWORKS } from "@/lib/contracts";
 import { getDb } from "@/lib/mongodb";
 
-const PROVER_API_URL = "https://proof-gen-api.usc-testnet2.creditcoin.network";
+const PROVER_API_URL = "https://proof-gen-api.sepolia.etherscan.io";
 
 export async function POST(req: NextRequest) {
   try {
@@ -77,10 +77,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(existing.proof);
     }
 
-    const ccProvider = new ethers.JsonRpcProvider(NETWORKS.USC.rpc);
+    const sepoliaProvider = new ethers.JsonRpcProvider(NETWORKS.SEPOLIA.rpc);
     const sourceProvider = new ethers.JsonRpcProvider(NETWORKS.SEPOLIA.rpc);
 
-    const proof = await generateProofFor(txHash, chainKey, PROVER_API_URL, ccProvider, sourceProvider);
+    const proof = await generateProofFor(txHash, chainKey, PROVER_API_URL, sepoliaProvider, sourceProvider);
 
     await db.collection("deposits").updateOne(
       { txHash },
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
     if (error.message.includes("BLOCK_NOT_ATTESTED")) {
       const db = await getDb();
       await db.collection("deposits").updateOne({ txHash }, { $set: { status: "WaitingAttestation" } });
-      return NextResponse.json({ status: "WAITING_ATTESTATION", message: "Block is being verified by Creditcoin Hub." });
+      return NextResponse.json({ status: "WAITING_ATTESTATION", message: "Block is being verified on Sepolia." });
     }
 
     return NextResponse.json({ error: error.message, status: "FAILED" }, { status: 500 });

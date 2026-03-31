@@ -53,10 +53,10 @@ export function BridgeStatus({ address }: BridgeStatusProps) {
         switch (status) {
             case 'DETECTED': return 'Deposit Detected';
             case 'BUILDING_PROOF': return 'Building Proof';
-            case 'WAITING_ATTESTATION': return 'Waiting for Creditcoin Attestation (10m)';
-            case 'SUBMITTED': return 'Verifying on USC Hub (5m)';
+            case 'WAITING_ATTESTATION': return 'Waiting for Attestation (10m)';
+            case 'SUBMITTED': return 'Verifying on Sepolia (5m)';
             case 'VERIFIED': return 'Verified (Finalizing)';
-            case 'COMPLETED': return 'Ready on USC Hub';
+            case 'COMPLETED': return 'Ready on Sepolia';
             default: return status;
         }
     };
@@ -66,8 +66,8 @@ export function BridgeStatus({ address }: BridgeStatusProps) {
             <div className="bg-white/5 px-4 py-2 border-b border-white/10 flex justify-between items-center overflow-hidden">
                 <div className="flex items-center gap-2">
                     <span className="text-[10px] text-white/40 uppercase tracking-widest whitespace-nowrap">Cross_Chain_Bridge_Monitor</span>
-                    <a href="https://explorer.usc-testnet2.creditcoin.network" target="_blank" className="text-[9px] text-primary hover:underline flex items-center gap-1 font-bold">
-                        USC_HUB <ExternalLink className="w-2 h-2" />
+                    <a href="https://sepolia.etherscan.io" target="_blank" className="text-[9px] text-primary hover:underline flex items-center gap-1 font-bold">
+                        SEPOLIA <ExternalLink className="w-2 h-2" />
                     </a>
                 </div>
                 {loading && <RefreshCw className="w-2.5 h-2.5 text-primary animate-spin" />}
@@ -125,10 +125,10 @@ export function BridgeStatus({ address }: BridgeStatusProps) {
                                 </a>
                                 {tx.hub_tx_hash && (
                                     <a
-                                        href={`https://explorer.usc-testnet2.creditcoin.network/tx/${tx.hub_tx_hash}`}
+                                        href={`https://sepolia.etherscan.io/tx/${tx.hub_tx_hash}`}
                                         target="_blank"
                                         className="p-1 px-2 bg-primary/20 hover:bg-primary/30 rounded text-[9px] font-black text-primary border border-primary/20 flex items-center gap-1 transition-all"
-                                        title="View on USC Hub"
+                                        title="View on Sepolia"
                                     >
                                         <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                                         HUB_TX
