@@ -153,8 +153,11 @@ export default function CreditPage() {
                 </button>
               )}
               {ps.decryptedScore !== null && (
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-2"><Unlock className="size-3.5 text-green-400" /><span className="text-green-400 text-xl font-black tracking-tighter">{ps.decryptedScore}</span></div>
+                <div className="flex items-center gap-6 flex-wrap">
+                  <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-2"><Unlock className="size-3.5 text-green-400" /><span className="text-green-400 text-xl font-black tracking-tighter">{ps.decryptedScore}</span><span className="text-[9px] text-green-400/50 ml-1">SCORE</span></div>
+                  {ps.decryptedLimit !== null && (
+                    <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-2"><Unlock className="size-3.5 text-blue-400" /><span className="text-blue-400 text-xl font-black tracking-tighter">{ps.decryptedLimit.toLocaleString()}</span><span className="text-[9px] text-blue-400/50 ml-1">LIMIT</span></div>
+                  )}
                   <span className="text-[9px] text-white/30 uppercase tracking-wider">Decrypted via EIP-712 consent</span>
                 </div>
               )}

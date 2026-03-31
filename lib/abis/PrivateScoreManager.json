@@ -44,11 +44,11 @@
       {
         "indexed": true,
         "internalType": "address",
-        "name": "caller",
+        "name": "user",
         "type": "address"
       }
     ],
-    "name": "CallerRevoked",
+    "name": "LimitUpdated",
     "type": "event"
   },
   {
@@ -214,6 +214,25 @@
         "type": "address"
       }
     ],
+    "name": "getEncryptedLimit",
+    "outputs": [
+      {
+        "internalType": "euint64",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
     "name": "getEncryptedScore",
     "outputs": [
       {
@@ -319,11 +338,21 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "caller",
+        "name": "user",
         "type": "address"
+      },
+      {
+        "internalType": "externalEuint64",
+        "name": "encLimit",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes",
+        "name": "proof",
+        "type": "bytes"
       }
     ],
-    "name": "revokeCaller",
+    "name": "setCreditLimit",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -337,12 +366,12 @@
       },
       {
         "internalType": "externalEuint64",
-        "name": "encryptedScore",
+        "name": "encScore",
         "type": "bytes32"
       },
       {
         "internalType": "bytes",
-        "name": "inputProof",
+        "name": "proof",
         "type": "bytes"
       }
     ],

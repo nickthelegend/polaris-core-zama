@@ -205,7 +205,7 @@ export function RepayDialog({ open, onOpenChange, loans, splitPlans, onRepayment
           {success && txHash && (
             <div className="bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 text-xs text-green-400 font-mono space-y-1">
               <p>Repayment successful!</p>
-              <p className="truncate">TX: {txHash}</p>
+              <p>TX: <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="underline hover:text-green-300 transition-colors">{txHash.slice(0, 10)}...{txHash.slice(-8)}</a></p>
             </div>
           )}
         </div>
