@@ -98,7 +98,7 @@ export const NETWORKS = {
     SEPOLIA: {
         id: 11155111,
         name: "Eth Sepolia",
-        rpc: "https://1rpc.io/sepolia",
+        rpc: "https://eth-sepolia.g.alchemy.com/v2/3qRB0TMQQv3hyKgav_6lF",
         explorer: "https://sepolia.etherscan.io",
         icon: "ethereum"
     },
