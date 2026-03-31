@@ -117,7 +117,7 @@
     "name": "loanEngine",
     "outputs": [
       {
-        "internalType": "address",
+        "internalType": "contract LoanEngine",
         "name": "",
         "type": "address"
       }
@@ -160,6 +160,11 @@
         "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint64",
+        "name": "destChainId",
+        "type": "uint64"
       }
     ],
     "name": "merchantWithdraw",
@@ -208,7 +213,7 @@
     "name": "poolManager",
     "outputs": [
       {
-        "internalType": "address",
+        "internalType": "contract PoolManager",
         "name": "",
         "type": "address"
       }
