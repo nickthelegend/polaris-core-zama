@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useObolus } from "@/hooks/use-obolus"
-import { useObolusWallet } from "@/lib/hooks/useObolusWallet"
+import { usePolaris } from "@/hooks/use-polaris"
+import { usePolarisWallet } from "@/lib/hooks/usePolarisWallet"
 import { Zap, ShieldCheck, Info, Loader2, AlertTriangle, CheckCircle2, FlaskConical, Wallet } from "lucide-react"
 import { toast } from "react-toastify"
 import { ethers } from "ethers"
@@ -18,10 +18,10 @@ export default function DebugBNPLPage() {
         getMasterConfig,
         getUserTotalCollateral,
         getLPBalance,
-        loading: obolusLoading
-    } = useObolus()
+        loading: polarisLoading
+    } = usePolaris()
 
-    const { connect } = useObolusWallet()
+    const { connect } = usePolarisWallet()
 
     const [score, setScore] = useState<string>("...")
     const [limit, setLimit] = useState<string>("...")
@@ -86,7 +86,7 @@ export default function DebugBNPLPage() {
         try {
             const { config } = getMasterConfig() as any
             const usdcAddress = config.USDC
-            const testMerchant = "0x722878c5349e602E6f6A2A3869a5C9213bAe183F" // Obolus Dev Merchant
+            const testMerchant = "0x722878c5349e602E6f6A2A3869a5C9213bAe183F" // Polaris Dev Merchant
             const testAmount = "10.0"
 
             addLog(`Target Merchant: ${testMerchant}`)
@@ -169,7 +169,7 @@ export default function DebugBNPLPage() {
                     <div className="space-y-6">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-white/5 border border-white/10 p-6 rounded-2xl">
-                                <span className="text-[10px] text-white/40 uppercase font-bold block mb-2">Obolus Score</span>
+                                <span className="text-[10px] text-white/40 uppercase font-bold block mb-2">Polaris Score</span>
                                 <div className="text-3xl font-black text-teal-400">{score}</div>
                             </div>
                             <div className="bg-white/5 border border-white/10 p-6 rounded-2xl">
@@ -191,10 +191,10 @@ export default function DebugBNPLPage() {
                             <div className="flex flex-col gap-3">
                                 <button
                                     onClick={handleTestBNPL}
-                                    disabled={obolusLoading || !authenticated}
+                                    disabled={polarisLoading || !authenticated}
                                     className="w-full bg-teal-500 hover:bg-teal-400 text-black py-4 rounded-xl font-black uppercase text-sm tracking-widest transition-all disabled:opacity-20 flex items-center justify-center gap-3"
                                 >
-                                    {obolusLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
+                                    {polarisLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
                                     Run BNPL Transaction
                                 </button>
 

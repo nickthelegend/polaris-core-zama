@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useObolus } from "@/hooks/use-obolus"
+import { usePolaris } from "@/hooks/use-polaris"
 import { ConnectGate } from "@/components/connect-gate"
 import {
   ShieldCheck,
@@ -26,8 +26,8 @@ export default function LimitsPage() {
     getScore,
     getExternalNetValue,
     updateCreditProfile,
-    loading: obolusLoading
-  } = useObolus()
+    loading: polarisLoading
+  } = usePolaris()
 
   const [creditLimit, setCreditLimit] = useState("0")
   const [nativeCollateral, setNativeCollateral] = useState("0")
@@ -128,7 +128,7 @@ export default function LimitsPage() {
                 <span className="text-primary font-bold text-sm tracking-widest uppercase">Available</span>
               </div>
               <p className="text-[10px] text-white/30 max-w-md mt-4 leading-relaxed">
-                Your limit is dynamically calculated based on your $Obolus local equity,
+                Your limit is dynamically calculated based on your Polaris local equity,
                 external DeFi footprints (Aave, Morpho, Compound), and your on-chain behavior score.
               </p>
             </div>
