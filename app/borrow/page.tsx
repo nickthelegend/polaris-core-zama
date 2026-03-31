@@ -69,7 +69,7 @@ export default function BorrowPage() {
   const [txError, setTxError] = useState<string | null>(null)
   const [decryptingBalances, setDecryptingBalances] = useState(false)
 
-  const { borrow, depositCollateral, loading, error, debtBalance, collateralBalance, decryptCollateral, decryptDebt } = useFhePrivateLending()
+  const { borrow, depositCollateral, loading, error, debtBalance, collateralBalance, decryptAllPositions } = useFhePrivateLending()
   const { address } = useAccount()
   const { chainId } = usePolaris()
 
@@ -87,8 +87,11 @@ export default function BorrowPage() {
     const addresses = getAddresses()
     setDecryptingBalances(true)
     Promise.all([
-      decryptCollateral(addresses.PRIVATE_COLLATERAL_VAULT),
-      decryptDebt(addresses.PRIVATE_BORROW_MANAGER),
+      decryptAllPositions(
+        addresses.PRIVATE_LENDING_POOL,
+        addresses.PRIVATE_BORROW_MANAGER,
+        addresses.PRIVATE_COLLATERAL_VAULT
+      ),
     ]).finally(() => setDecryptingBalances(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address])

@@ -5,10 +5,10 @@ const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017";
 const dbName = process.env.MONGODB_DB || "polaris";
 
 const SEED_POOLS: Omit<PoolDocument, "_id">[] = [
-  { symbol: "ETH",  name: "Ether",          supplyApy: 3.4, borrowApy: 5.2, totalLiquidity: 14200000, utilization: 68, updatedAt: new Date() },
-  { symbol: "USDC", name: "USD Coin",        supplyApy: 2.1, borrowApy: 4.8, totalLiquidity: 18500000, utilization: 74, updatedAt: new Date() },
-  { symbol: "WBTC", name: "Wrapped Bitcoin", supplyApy: 2.8, borrowApy: 4.1, totalLiquidity: 4800000,  utilization: 55, updatedAt: new Date() },
-  { symbol: "BNB",  name: "BNB",             supplyApy: 5.1, borrowApy: 7.5, totalLiquidity: 1602482,  utilization: 42, updatedAt: new Date() },
+  { symbol: "ETH",  name: "Ether",          supplyApy: 3.4, borrowApy: 5.2, totalLiquidity: 12400, utilization: 68, updatedAt: new Date() },
+  { symbol: "USDC", name: "USD Coin",        supplyApy: 2.1, borrowApy: 4.8, totalLiquidity: 28500, utilization: 74, updatedAt: new Date() },
+  { symbol: "WBTC", name: "Wrapped Bitcoin", supplyApy: 2.8, borrowApy: 4.1, totalLiquidity: 4800,  utilization: 55, updatedAt: new Date() },
+  { symbol: "BNB",  name: "BNB",             supplyApy: 5.1, borrowApy: 7.5, totalLiquidity: 6200,  utilization: 42, updatedAt: new Date() },
 ];
 
 export async function seedDatabase(db: import("mongodb").Db): Promise<void> {

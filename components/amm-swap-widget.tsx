@@ -24,8 +24,8 @@ const TOKENS = [
 
 export function AMMSwapWidget() {
   const { address, isConnected } = useAccount()
-  const [fromToken, setFromToken] = useState(TOKENS[0]) // BNB
-  const [toToken, setToToken] = useState(TOKENS[1]) // USDC
+  const [fromToken, setFromToken] = useState(TOKENS[0]) // WETH
+  const [toToken, setToToken] = useState(TOKENS[2]) // USDC (valid WETH-USDC pool)
   const [fromAmount, setFromAmount] = useState("")
   const [toAmount, setToAmount] = useState("")
   const [isApproving, setIsApproving] = useState(false)
