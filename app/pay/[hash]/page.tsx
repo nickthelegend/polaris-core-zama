@@ -112,7 +112,7 @@ export default function CheckoutPage() {
       return
     }
 
-    const targetAddress = bill.merchant?.escrow_contract || bill.merchant?.user?.wallet_address
+    const targetAddress = bill.merchant?.user?.wallet_address || bill.merchant?.escrow_contract
     if (!targetAddress || targetAddress === "0x0000000000000000000000000000000000000000") {
       toast.error("Merchant settlement address not configured. Ask merchant to set wallet.")
       return
