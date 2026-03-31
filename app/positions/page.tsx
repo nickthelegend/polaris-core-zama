@@ -22,7 +22,22 @@ function ManageModal({ pos, onClose }: { pos: Position; onClose: () => void }) {
   const [logs, setLogs] = useState<LogEntry[]>([])
   const logRef = useRef<HTMLDivElement>(null)
   const { address } = useAccount()
-  const { depositCollateral, supply, borrow, loading } = useFhePrivateLending()
+  const { depositCollateral, supply, borrow, loading, decryptAllPositions, suppliedBalance, collateralBalance, debtBalance } = useFhePrivateLending()
+  const [decryptingBal, setDecryptingBal] = useState(false)
+
+  const currentBalance = isSupply
+    ? (suppliedBalance !== null ? suppliedBalance : collateralBalance)
+    : debtBalance
+
+  const handleDecryptBalance = async () => {
+    setDecryptingBal(true)
+    try {
+      const { CONTRACTS } = await import("@/lib/contracts")
+      const pl = CONTRACTS.PRIVATE_LENDING
+      await decryptAllPositions(pl.PRIVATE_LENDING_POOL, pl.PRIVATE_BORROW_MANAGER, pl.PRIVATE_COLLATERAL_VAULT)
+    } catch {}
+    setDecryptingBal(false)
+  }
 
   const log = (msg: string, type: LogEntry["type"] = "info") => {
     setLogs(prev => [...prev, { ts: Date.now(), msg, type }])
@@ -122,6 +137,30 @@ function ManageModal({ pos, onClose }: { pos: Position; onClose: () => void }) {
             ))}
           </div>
           <div className="p-6 space-y-4">
+            {/* Current Balance */}
+            <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-4 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] text-foreground/40 uppercase tracking-widest block mb-1">Your {isSupply ? "Supplied" : "Debt"} Balance</span>
+                {currentBalance !== null ? (
+                  <span className="text-lg font-bold text-white">{(Number(currentBalance) / 1e6).toFixed(2)} <span className="text-xs text-foreground/40">{pos.symbol}</span></span>
+                ) : (
+                  <span className="text-lg font-bold text-foreground/30">••••••••</span>
+                )}
+              </div>
+              {currentBalance === null ? (
+                <button onClick={handleDecryptBalance} disabled={decryptingBal}
+                  className="flex items-center gap-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded-xl px-4 py-2 text-[10px] uppercase tracking-widest font-bold text-purple-300 transition-all disabled:opacity-40">
+                  {decryptingBal ? <Loader2 size={12} className="animate-spin" /> : <Lock size={12} />}
+                  Decrypt
+                </button>
+              ) : (
+                <button onClick={() => setAmount((Number(currentBalance) / 1e6).toString())}
+                  className="text-[10px] text-primary/70 hover:text-primary uppercase tracking-widest font-bold transition-colors">
+                  Max
+                </button>
+              )}
+            </div>
+
             <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-4 space-y-2">
               <label className="text-xs text-foreground/40">
                 {tab === "add" ? (isSupply ? "Amount to supply" : "Amount to borrow") : (isSupply ? "Amount to withdraw" : "Amount to repay")}
