@@ -69,14 +69,10 @@ function PrivateActionWidget() {
   const [tab, setTab] = useState<Tab>("Borrow")
   const [borrowAmount, setBorrowAmount] = useState("")
   const [collateralAmount, setCollateralAmount] = useState("")
-  const [maxRate, setMaxRate] = useState("10")
-  const [duration, setDuration] = useState("30")
   const [borrowAsset, setBorrowAsset] = useState("USDC")
   const [collateralAsset, setCollateralAsset] = useState("WETH")
   const [lendAmount, setLendAmount] = useState("")
   const [lendAsset, setLendAsset] = useState("USDC")
-  const [minRate, setMinRate] = useState("5")
-  const [lendDuration, setLendDuration] = useState("30")
 
   const { supply, borrow, loading } = useFhePrivateLending()
 
@@ -123,7 +119,7 @@ function PrivateActionWidget() {
           <>
             <div>
               <h3 className="text-lg font-bold text-white">Borrow with Privacy</h3>
-              <p className="text-xs text-foreground/40 mt-1 leading-relaxed">Submit a private borrow intent. Your max rate is encrypted and only revealed inside the CRE settlement engine.</p>
+              <p className="text-xs text-foreground/40 mt-1 leading-relaxed">Submit a private borrow intent. Your request is encrypted with fully homomorphic encryption (zama fheVM).</p>
             </div>
             <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-4 space-y-2">
               <label className="text-xs text-foreground/40">{"You're borrowing"}</label>
@@ -139,25 +135,9 @@ function PrivateActionWidget() {
                 <TokenDropdown options={COLLATERAL_ASSETS} value={collateralAsset} onChange={setCollateralAsset} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-4 space-y-1">
-                <label className="text-xs text-foreground/40">Max Rate (%)</label>
-                <div className="flex items-center gap-2">
-                  <input type="number" value={maxRate} onChange={e => setMaxRate(e.target.value)} className="flex-1 bg-transparent text-2xl font-light text-foreground/70 focus:outline-none min-w-0" />
-                  <span className="text-foreground/30 text-sm">%</span>
-                </div>
-              </div>
-              <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-4 space-y-1">
-                <label className="text-xs text-foreground/40">Duration (days)</label>
-                <div className="flex items-center gap-2">
-                  <input type="number" value={duration} onChange={e => setDuration(e.target.value)} className="flex-1 bg-transparent text-2xl font-bold text-foreground focus:outline-none min-w-0" />
-                  <span className="text-foreground/30 text-sm">d</span>
-                </div>
-              </div>
-            </div>
             <div className="flex items-center gap-2 bg-[#05080f]/40 border border-border/20 rounded-xl px-4 py-3">
               <Info size={14} className="text-foreground/30 flex-shrink-0" />
-              <span className="text-xs text-foreground/40">Your max rate is encrypted and hidden from the server</span>
+              <span className="text-xs text-foreground/40">Your collateral data is encrypted and hidden from the server</span>
             </div>
             <button 
               onClick={handleBorrow}
@@ -173,7 +153,7 @@ function PrivateActionWidget() {
           <>
             <div>
               <h3 className="text-lg font-bold text-white">Lend with Privacy</h3>
-              <p className="text-xs text-foreground/40 mt-1 leading-relaxed">Supply liquidity privately. Your min rate is encrypted and matched inside the CRE engine.</p>
+              <p className="text-xs text-foreground/40 mt-1 leading-relaxed">Supply liquidity privately. Your supply intent is matched securely via zama fheVM.</p>
             </div>
             <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-4 space-y-2">
               <label className="text-xs text-foreground/40">{"You're lending"}</label>
@@ -182,25 +162,9 @@ function PrivateActionWidget() {
                 <TokenDropdown options={BORROW_ASSETS} value={lendAsset} onChange={setLendAsset} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-4 space-y-1">
-                <label className="text-xs text-foreground/40">Min Rate (%)</label>
-                <div className="flex items-center gap-2">
-                  <input type="number" value={minRate} onChange={e => setMinRate(e.target.value)} className="flex-1 bg-transparent text-2xl font-light text-foreground/70 focus:outline-none min-w-0" />
-                  <span className="text-foreground/30 text-sm">%</span>
-                </div>
-              </div>
-              <div className="bg-[#05080f]/60 border border-border/20 rounded-2xl p-4 space-y-1">
-                <label className="text-xs text-foreground/40">Duration (days)</label>
-                <div className="flex items-center gap-2">
-                  <input type="number" value={lendDuration} onChange={e => setLendDuration(e.target.value)} className="flex-1 bg-transparent text-2xl font-bold text-foreground focus:outline-none min-w-0" />
-                  <span className="text-foreground/30 text-sm">d</span>
-                </div>
-              </div>
-            </div>
             <div className="flex items-center gap-2 bg-[#05080f]/40 border border-border/20 rounded-xl px-4 py-3">
               <Info size={14} className="text-foreground/30 flex-shrink-0" />
-              <span className="text-xs text-foreground/40">Your min rate is encrypted and hidden from the server</span>
+              <span className="text-xs text-foreground/40">Your lending signals are encrypted and hidden from the server</span>
             </div>
             <button 
               onClick={handleLend}
