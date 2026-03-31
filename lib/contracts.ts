@@ -18,6 +18,7 @@ import PrivateSwapUSDCABI from './abis/PrivateSwapUSDC.json';
 import PrivateSwapUSDTABI from './abis/PrivateSwapUSDT.json';
 import PrivateSwapWETHABI from './abis/PrivateSwapWETH.json';
 import PrivateSwapBNBABI from './abis/PrivateSwapBNB.json';
+import PrivateScoreManagerABI from './abis/PrivateScoreManager.json';
 
 export const CONTRACTS = {
     MASTER: {
@@ -60,7 +61,8 @@ export const CONTRACTS = {
         PRIVATE_COLLATERAL_VAULT: process.env.NEXT_PUBLIC_PRIVATE_COLLATERAL_VAULT || "",
         PRIVATE_BORROW_MANAGER: process.env.NEXT_PUBLIC_PRIVATE_BORROW_MANAGER || "",
         PRIVATE_LENDING_POOL: process.env.NEXT_PUBLIC_PRIVATE_LENDING_POOL || "",
-        PRIVATE_LIQUIDATION_ENGINE: process.env.NEXT_PUBLIC_PRIVATE_LIQUIDATION_ENGINE || ""
+        PRIVATE_LIQUIDATION_ENGINE: process.env.NEXT_PUBLIC_PRIVATE_LIQUIDATION_ENGINE || "",
+        PRIVATE_SCORE_MANAGER: process.env.NEXT_PUBLIC_PRIVATE_SCORE_MANAGER || ""
     },
     LOCAL_HARDHAT: {
         PRIVATE_COLLATERAL_VAULT: process.env.NEXT_PUBLIC_PRIVATE_COLLATERAL_VAULT || "",
@@ -91,7 +93,8 @@ export const ABIS = {
     PrivateSwapUSDC: PrivateSwapUSDCABI,
     PrivateSwapUSDT: PrivateSwapUSDTABI,
     PrivateSwapWETH: PrivateSwapWETHABI,
-    PrivateSwapBNB: PrivateSwapBNBABI
+    PrivateSwapBNB: PrivateSwapBNBABI,
+    PrivateScoreManager: PrivateScoreManagerABI
 };
 
 export const NETWORKS = {

@@ -12,8 +12,12 @@ import {
   Zap,
   RefreshCw,
   Loader2,
+  Lock,
+  Unlock,
+  Eye,
 } from "lucide-react"
 import { usePolaris } from "@/hooks/use-polaris"
+import { usePrivateScore } from "@/hooks/use-private-score"
 import { shouldShowWarning } from "@/lib/credit-utils"
 import { ScoreGauge } from "@/components/credit/score-gauge"
 import { RepayDialog } from "@/components/credit/repay-dialog"
@@ -60,6 +64,18 @@ export default function CreditPage() {
   const [splitPlansData, setSplitPlansData] = useState<any[]>([])
   const [repaymentData, setRepaymentData] = useState<any[]>([])
 
+  const {
+    decryptedScore: privateScore,
+    isInitialized: privateScoreInitialized,
+    loading: privateScoreLoading,
+    decrypting: privateScoreDecrypting,
+    error: privateScoreError,
+    checkInitialized: checkPrivateScore,
+    initializeScore: initPrivateScore,
+    decryptScore: decryptPrivateScore,
+    contractAddress: privateScoreAddress,
+  } = usePrivateScore()
+
   const fetchAll = async () => {
     try {
       const [col, cl, sc, ln, limit] = await Promise.all([
@@ -94,6 +110,9 @@ export default function CreditPage() {
         ])
         setSplitPlansData(splitsRes.plans || [])
         setRepaymentData(repaysRes.records || [])
+
+        // Check private score initialization
+        checkPrivateScore().catch(() => {})
       }
     } catch {
       // fallback values already set
@@ -260,6 +279,84 @@ export default function CreditPage() {
               <span className="text-[9px] text-white/30 tracking-wider">{f.desc}</span>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* FHE Private Credit Score (Zama FHEVM) */}
+      <div className="glass-card rounded-lg border border-purple-500/20 overflow-hidden shadow-[0_0_20px_rgba(168,85,247,0.05)]">
+        <div className="bg-purple-500/5 px-5 py-2.5 border-b border-purple-500/10 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <Lock className="size-3.5 text-purple-400" />
+            <span className="text-[10px] text-purple-400/80 uppercase tracking-widest font-bold">Private_Credit_Score // Zama FHEVM</span>
+          </div>
+          <span className="text-[9px] text-purple-400/40 font-bold">Encrypted On-Chain</span>
+        </div>
+        <div className="p-6">
+          <div className="flex items-center justify-between gap-6">
+            <div className="flex-1">
+              <p className="text-[10px] text-white/40 leading-relaxed mb-4">
+                Your credit score is stored <span className="text-purple-400 font-bold">fully encrypted</span> on Ethereum Sepolia using Zama&apos;s FHEVM.
+                No one — not even the protocol — can see your score without your explicit EIP-712 signature consent.
+              </p>
+
+              {!privateScoreInitialized && privateScoreInitialized !== null && (
+                <button
+                  onClick={initPrivateScore}
+                  disabled={privateScoreLoading}
+                  className="flex items-center gap-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded-xl px-5 py-2.5 text-[10px] uppercase tracking-widest font-bold text-purple-300 transition-all disabled:opacity-40"
+                >
+                  {privateScoreLoading ? <Loader2 className="size-3 animate-spin" /> : <Lock className="size-3" />}
+                  Initialize Encrypted Score
+                </button>
+              )}
+
+              {privateScoreInitialized && privateScore === null && (
+                <button
+                  onClick={decryptPrivateScore}
+                  disabled={privateScoreDecrypting}
+                  className="flex items-center gap-2 bg-purple-500/70 hover:bg-purple-500/90 rounded-xl px-5 py-2.5 text-[10px] uppercase tracking-widest font-black text-white transition-all shadow-[0_0_15px_rgba(168,85,247,0.3)] disabled:opacity-40"
+                >
+                  {privateScoreDecrypting ? <Loader2 className="size-3 animate-spin" /> : <Eye className="size-3" />}
+                  {privateScoreDecrypting ? "Decrypting via Zama Gateway..." : "Decrypt My Score"}
+                </button>
+              )}
+
+              {privateScore !== null && (
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-2">
+                    <Unlock className="size-3.5 text-green-400" />
+                    <span className="text-green-400 text-xl font-black tracking-tighter">{privateScore}</span>
+                  </div>
+                  <span className="text-[9px] text-white/30 uppercase tracking-wider">Decrypted via EIP-712 consent</span>
+                </div>
+              )}
+
+              {privateScoreError && (
+                <p className="text-[10px] text-red-400 mt-2">{privateScoreError}</p>
+              )}
+            </div>
+
+            <div className="flex-shrink-0 flex flex-col items-center gap-2 opacity-60">
+              <div className="size-16 bg-purple-500/10 rounded-full flex items-center justify-center border border-purple-500/20">
+                <Lock className="size-7 text-purple-400" />
+              </div>
+              <span className="text-[8px] text-purple-400/40 uppercase tracking-widest">FHE Encrypted</span>
+            </div>
+          </div>
+
+          {privateScoreAddress && (
+            <div className="mt-4 pt-3 border-t border-white/5 flex items-center gap-2">
+              <span className="text-[9px] text-white/20 uppercase tracking-wider">Contract:</span>
+              <a
+                href={`https://sepolia.etherscan.io/address/${privateScoreAddress}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[9px] text-purple-400/50 hover:text-purple-400 font-mono transition-colors"
+              >
+                {privateScoreAddress}
+              </a>
+            </div>
+          )}
         </div>
       </div>
 
