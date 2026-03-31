@@ -2,9 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { Loader2 } from "lucide-react"
-import { useMutation } from "convex/react"
-import { api } from "@/convex/_generated/api"
-import type { Id } from "@/convex/_generated/dataModel"
 import {
   Dialog,
   DialogContent,
@@ -23,7 +20,7 @@ import { Button } from "@/components/ui/button"
 import { usePolaris } from "@/hooks/use-polaris"
 
 interface SplitPlan {
-  _id: Id<"splitPlans">
+  _id: string
   loanId: number
   installments: Array<{
     index: number
@@ -57,8 +54,6 @@ function getRemainingDebt(loan: RepayDialogProps["loans"][number]): string {
 
 export function RepayDialog({ open, onOpenChange, loans, splitPlans, onRepaymentComplete }: RepayDialogProps) {
   const { repayLoan, loading, txHash, address } = usePolaris()
-  const addRepaymentRecord = useMutation(api.credit.addRepaymentRecord)
-  const updateInstallmentStatus = useMutation(api.credit.updateInstallmentStatus)
 
   const [selectedLoanId, setSelectedLoanId] = useState<string>("")
   const [amount, setAmount] = useState("")
@@ -96,29 +91,37 @@ export function RepayDialog({ open, onOpenChange, loans, splitPlans, onRepayment
     try {
       const receipt = await repayLoan(selectedLoan.id, amount)
 
-      // Record repayment in Convex
+      // Record repayment in MongoDB
       if (address && receipt?.hash) {
         const plan = findSplitPlan(selectedLoan.id)
         const loanType: "bnpl" | "split3" = plan ? "split3" : "bnpl"
 
-        await addRepaymentRecord({
-          userAddress: address,
-          loanId: selectedLoan.id,
-          amount: parseFloat(amount),
-          txHash: receipt.hash,
-          loanType,
+        await fetch("/api/credit/repayments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userAddress: address,
+            loanId: selectedLoan.id,
+            amount: parseFloat(amount),
+            txHash: receipt.hash,
+            loanType,
+          }),
         })
 
         // For Split-in-3 plans, mark the next upcoming installment as "paid"
         if (plan) {
           const nextUpcoming = plan.installments.find((inst) => inst.status === "upcoming")
           if (nextUpcoming) {
-            await updateInstallmentStatus({
-              planId: plan._id,
-              installmentIndex: nextUpcoming.index,
-              status: "paid",
-              paidAt: Date.now(),
-              txHash: receipt.hash,
+            await fetch("/api/credit/installments", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                planId: plan._id,
+                installmentIndex: nextUpcoming.index,
+                status: "paid",
+                paidAt: Date.now(),
+                txHash: receipt.hash,
+              }),
             })
           }
         }

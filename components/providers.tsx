@@ -7,7 +7,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RainbowKitProvider, darkTheme, getDefaultConfig } from "@rainbow-me/rainbowkit";
 import "@rainbow-me/rainbowkit/styles.css";
 import { ThemeProvider } from "next-themes";
-import { ConvexClientProvider } from "@/components/convex-client-provider";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Toaster } from "sonner";
@@ -26,29 +25,27 @@ const queryClient = new QueryClient();
 
 export function Providers({ children }: PropsWithChildren) {
   return (
-    <ConvexClientProvider>
-      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-        <QueryClientProvider client={queryClient}>
-          <WagmiProvider config={wagmiConfig}>
-            <RainbowKitProvider theme={darkTheme()}>
-              {children}
-              <Toaster position="top-right" theme="dark" />
-              <ToastContainer
-                position="top-right"
-                autoClose={5000}
-                hideProgressBar={false}
-                newestOnTop={false}
-                closeOnClick
-                rtl={false}
-                pauseOnFocusLoss
-                draggable
-                pauseOnHover
-                theme="light"
-              />
-            </RainbowKitProvider>
-          </WagmiProvider>
-        </QueryClientProvider>
-      </ThemeProvider>
-    </ConvexClientProvider>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+      <QueryClientProvider client={queryClient}>
+        <WagmiProvider config={wagmiConfig}>
+          <RainbowKitProvider theme={darkTheme()}>
+            {children}
+            <Toaster position="top-right" theme="dark" />
+            <ToastContainer
+              position="top-right"
+              autoClose={5000}
+              hideProgressBar={false}
+              newestOnTop={false}
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="light"
+            />
+          </RainbowKitProvider>
+        </WagmiProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
