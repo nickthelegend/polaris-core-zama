@@ -324,12 +324,24 @@ export function usePolaris() {
             const totalLimit = await scoreManager.getCreditLimit(address);
 
             const loanEngine = await getContract(config.LOAN_ENGINE, ABIS.LoanEngine, id, false);
-            const activeDebt = await loanEngine.userActiveDebt(address);
+            const activeDebtRaw = await loanEngine.userActiveDebt(address);
+
+            // activeDebt may be in 6-decimal (USDC) or 18-decimal units depending on the token.
+            // ScoreManager limit is always in 18-decimal units.
+            // Normalize: if activeDebt looks tiny relative to limit, it's likely 6-decimal USDC.
+            // Scale it up to 18 decimals for a fair comparison.
+            let activeDebt = activeDebtRaw;
+            if (activeDebtRaw > BigInt(0) && totalLimit > BigInt(0)) {
+                // If debt is more than 1000x smaller than limit, it's probably 6-decimal
+                if (totalLimit / (activeDebtRaw > BigInt(0) ? activeDebtRaw : BigInt(1)) > BigInt(1000000)) {
+                    activeDebt = activeDebtRaw * BigInt(10 ** 12); // scale 6→18
+                }
+            }
 
             const available = totalLimit > activeDebt ? totalLimit - activeDebt : BigInt(0);
             const limitVal = parseFloat(formatUnits(available, 18));
 
-            if (limitVal === 0 && activeDebt === BigInt(0)) {
+            if (limitVal === 0 && activeDebtRaw === BigInt(0)) {
                 const equity = await getUserTotalCollateral();
                 return (parseFloat(equity) * 0.3).toString();
             }

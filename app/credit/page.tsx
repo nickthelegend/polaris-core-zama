@@ -76,7 +76,7 @@ export default function CreditPage() {
   )
 
   const loanPages = Math.ceil(loans.length / PAGE_SIZE)
-  const pagedLoans = loans.slice(loanPage * PAGE_SIZE, (loanPage + 1) * PAGE_SIZE)
+  const pagedLoans = [...loans].reverse().slice(loanPage * PAGE_SIZE, (loanPage + 1) * PAGE_SIZE)
   const splitPages = Math.ceil(splitPlansData.length / PAGE_SIZE)
   const pagedSplits = splitPlansData.slice(splitPage * PAGE_SIZE, (splitPage + 1) * PAGE_SIZE)
   const repayPages = Math.ceil(repaymentData.length / PAGE_SIZE)
