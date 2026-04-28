@@ -195,6 +195,8 @@ export default function Page() {
     decryptAllPositions, 
     suppliedBalance, 
     debtBalance, 
+    creditScore,
+    creditLimit,
     loading: fheLoading 
   } = useFhePrivateLending()
 
@@ -202,12 +204,10 @@ export default function Page() {
 
     const handleDecrypt = async () => {
         try {
-            const addresses = CONTRACTS.PRIVATE_LENDING;
-            
             toast.info("Requesting secure decryption via EIP-712...")
-            // Use the first borrow asset as the target for position lookup
+            // Default to USDC for home page overview
             const { TOKENS } = await import("@/config/tokens")
-            const tokenAddr = TOKENS[borrowAsset]?.address || ""
+            const tokenAddr = TOKENS["USDC"]?.address || ""
             await decryptAllPositions(tokenAddr)
             setHasDecrypted(true)
             toast.success("Confidential positions revealed")
@@ -272,9 +272,21 @@ export default function Page() {
                 <div className="text-[10px] text-foreground/40 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
                   <History size={12} className="text-primary" />Total_Borrowed_(Encrypted)
                 </div>
-                <div className="text-4xl font-bold tracking-tight text-white/50">
+                <div className="text-3xl font-bold tracking-tight text-white/50">
                   {hasDecrypted && debtBalance !== null ? `$${formatUnits(debtBalance, 6)}` : "••••••••"}
                 </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-foreground/40 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+                  <Target size={12} className="text-primary" />Credit_Score_(Private)
+                </div>
+                <div className="text-3xl font-bold tracking-tighter text-purple-400">
+                  {hasDecrypted && creditScore !== null ? creditScore : "•••"}
+                  <span className="text-[10px] text-foreground/20 ml-2">/ 850</span>
+                </div>
+                {hasDecrypted && creditLimit !== null && (
+                  <p className="text-[10px] text-purple-400/60 uppercase tracking-widest mt-1">Limit: ${(Number(creditLimit)/1e6).toFixed(0)} USDC</p>
+                )}
               </div>
 
               {!hasDecrypted && (

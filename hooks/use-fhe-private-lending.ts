@@ -12,6 +12,8 @@ interface FhePrivateLendingState {
   collateralBalance: bigint | null;
   debtBalance: bigint | null;
   suppliedBalance: bigint | null;
+  creditScore: number | null;
+  creditLimit: bigint | null;
   loading: boolean;
   error: string | null;
 }
@@ -25,6 +27,8 @@ export function useFhePrivateLending() {
     collateralBalance: null,
     debtBalance: null,
     suppliedBalance: null,
+    creditScore: null,
+    creditLimit: null,
     loading: false,
     error: null,
   });
@@ -45,15 +49,14 @@ export function useFhePrivateLending() {
       const { config, id } = getMasterConfig();
       const poolManager = await getContract(config.POOL_MANAGER, ABIS.PoolManager, id);
       const loanEngine = await getContract(config.LOAN_ENGINE, ABIS.LoanEngine, id);
+      const scoreManager = await getContract(config.SCORE_MANAGER, ABIS.ScoreManager, id);
 
-      // FHE operations are non-view, but we can use staticCall or just a regular call 
-      // depending on the provider's FHEVM support. 
-      // For zama, we usually just fetch the handles from the state mappings or view functions if they exist.
-      
-      const [sHandle, dHandle, cHandle] = await Promise.all([
+      const [sHandle, dHandle, cHandle, scoreHandle, limitHandle] = await Promise.all([
         poolManager.getLpShares(address, tokenAddress),
-        loanEngine.userActiveDebt(address),
-        poolManager.getUserTotalCollateral(address)
+        loanEngine.getUserActiveDebt(address),
+        poolManager.getUserTotalCollateral(address),
+        scoreManager.getScore(address),
+        scoreManager.getCreditLimit(address)
       ]);
 
       const fhevm = await getZamaInstance();
@@ -61,15 +64,17 @@ export function useFhePrivateLending() {
       const startTimestamp = Math.floor(Date.now() / 1000);
       const durationDays = 1;
       
-      const contractAddresses = [config.POOL_MANAGER, config.LOAN_ENGINE];
+      const contractAddresses = [config.POOL_MANAGER, config.LOAN_ENGINE, config.SCORE_MANAGER];
       const handleContractPairs = [
         { handle: sHandle, contractAddress: config.POOL_MANAGER },
         { handle: dHandle, contractAddress: config.LOAN_ENGINE },
-        { handle: cHandle, contractAddress: config.POOL_MANAGER }
+        { handle: cHandle, contractAddress: config.POOL_MANAGER },
+        { handle: scoreHandle, contractAddress: config.SCORE_MANAGER },
+        { handle: limitHandle, contractAddress: config.SCORE_MANAGER }
       ].filter(p => p.handle && p.handle !== '0x' + '0'.repeat(64));
 
       if (handleContractPairs.length === 0) {
-        setState(s => ({ ...s, suppliedBalance: 0n, debtBalance: 0n, collateralBalance: 0n, loading: false }));
+        setState(s => ({ ...s, suppliedBalance: 0n, debtBalance: 0n, collateralBalance: 0n, creditScore: 300, creditLimit: 0n, loading: false }));
         return;
       }
 
@@ -100,6 +105,8 @@ export function useFhePrivateLending() {
         suppliedBalance: parse(sHandle),
         debtBalance: parse(dHandle),
         collateralBalance: parse(cHandle),
+        creditScore: Number(parse(scoreHandle)),
+        creditLimit: parse(limitHandle),
         loading: false
       }));
     } catch (err) {

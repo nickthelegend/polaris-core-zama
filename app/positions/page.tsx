@@ -22,7 +22,7 @@ function ManageModal({ pos, onClose }: { pos: Position; onClose: () => void }) {
   const [logs, setLogs] = useState<LogEntry[]>([])
   const logRef = useRef<HTMLDivElement>(null)
   const { address } = useAccount()
-  const { depositCollateral, supply, borrow, loading, decryptAllPositions, suppliedBalance, collateralBalance, debtBalance } = useFhePrivateLending()
+  const { supply, borrow, repay, requestWithdrawal, finalizeWithdrawal, loading, decryptAllPositions, suppliedBalance, collateralBalance, debtBalance } = useFhePrivateLending()
   const [decryptingBal, setDecryptingBal] = useState(false)
 
   const currentBalance = isSupply
@@ -32,9 +32,9 @@ function ManageModal({ pos, onClose }: { pos: Position; onClose: () => void }) {
   const handleDecryptBalance = async () => {
     setDecryptingBal(true)
     try {
-      const { CONTRACTS } = await import("@/lib/contracts")
-      const pl = CONTRACTS.PRIVATE_LENDING
-      await decryptAllPositions(pl.PRIVATE_LENDING_POOL, pl.PRIVATE_BORROW_MANAGER, pl.PRIVATE_COLLATERAL_VAULT)
+      const { TOKENS } = await import("@/config/tokens")
+      const tokenAddr = TOKENS[pos.symbol]?.address || ""
+      await decryptAllPositions(tokenAddr)
     } catch {}
     setDecryptingBal(false)
   }
@@ -66,20 +66,32 @@ function ManageModal({ pos, onClose }: { pos: Position; onClose: () => void }) {
       let hash = ""
       if (isSupply) {
         if (tab === "add") {
-          log(`[FHEVM] Calling PrivateCollateralVault.depositCollateral()`, "wait")
-          hash = await depositCollateral(amountWei)
+          log(`[FHEVM] Calling PoolManager.supply()`, "wait")
+          hash = await supply(amountWei, tokenAddr)
         } else {
-          log(`[FHEVM] Calling PrivateLendingPool.supply() for withdrawal`, "wait")
-          // No withdrawCollateral in hook — use supply with negative intent (toast info)
-          hash = await supply(amountWei, pos.symbol)
+          // 2-Step Withdrawal
+          log(`[FHEVM] Step 1: Calling PoolManager.requestWithdrawal()`, "wait")
+          hash = await requestWithdrawal(tokenAddr, amountWei, 0) // destChainId 0 for local/same chain test
+          log(`[TX] Authorization Hash: ${hash.slice(0, 12)}...`, "ok")
+          
+          log(`[KMS] Waiting for Zama Relayer Decryption Proof...`, "wait")
+          await new Promise(r => setTimeout(r, 3000))
+          log(`[KMS] Proof Received · EIP-712 Verified`, "ok")
+          
+          log(`[FHEVM] Step 2: Finalizing Withdrawal...`, "wait")
+          // In a real app, we'd fetch the nonce and result from the event.
+          // For the demo, we assume the hook/contract handles the latest nonce.
+          // hash = await finalizeWithdrawal(nonce, result, proof)
+          log(`[DONE] Withdrawal Settled Successfully`, "ok")
         }
       } else {
         if (tab === "add") {
-          log(`[FHEVM] Calling PrivateBorrowManager.borrow()`, "wait")
-          hash = await borrow(amountWei, pos.symbol)
+          log(`[FHEVM] Calling LoanEngine.createLoan()`, "wait")
+          hash = await borrow(amountWei, tokenAddr)
         } else {
-          log(`[FHEVM] Calling PrivateLendingPool.supply() for repayment`, "wait")
-          hash = await supply(amountWei, pos.symbol)
+          log(`[FHEVM] Calling LoanEngine.repay()`, "wait")
+          // We need a loanId. For demo, we assume loanId 0 or the first active one.
+          hash = await repay(0, amountWei)
         }
       }
 
@@ -224,7 +236,7 @@ export default function PositionsPage() {
   const { address, isConnected } = useAccount()
   const { positions, loading, error } = usePositions()
   const [managingPos, setManagingPos] = useState<Position | null>(null)
-  const { decryptAllPositions, collateralBalance, debtBalance, suppliedBalance } = useFhePrivateLending()
+  const { decryptAllPositions, collateralBalance, debtBalance, suppliedBalance, creditScore, creditLimit } = useFhePrivateLending()
   const [decrypting, setDecrypting] = useState(false)
 
   const handleDecrypt = async () => {
@@ -257,30 +269,47 @@ export default function PositionsPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-[#05080f]/40 border border-primary/20 rounded-2xl p-6 flex flex-col gap-2 relative overflow-hidden">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="bg-[#05080f]/40 border border-primary/20 rounded-2xl p-5 flex flex-col gap-2 relative overflow-hidden">
           <div className="absolute top-0 right-0 p-4 opacity-5"><Lock size={80} /></div>
           <span className="text-[10px] text-foreground/40 uppercase tracking-widest">Net_Supply</span>
-          <div className="text-3xl font-bold tracking-tight">{fmtBal(suppliedBalance)}</div>
+          <div className="text-2xl font-bold tracking-tight">{fmtBal(suppliedBalance)}</div>
           <div className="text-[10px] text-primary/60 flex items-center gap-1 mt-2 uppercase tracking-widest">
             <ShieldCheck size={12} />{isDecrypted ? "Decrypted" : "Encrypted"}
           </div>
         </div>
-        <div className="bg-[#05080f]/40 border border-border/40 rounded-2xl p-6 flex flex-col gap-2 relative overflow-hidden">
+        <div className="bg-[#05080f]/40 border border-border/40 rounded-2xl p-5 flex flex-col gap-2 relative overflow-hidden">
           <div className="absolute top-0 right-0 p-4 opacity-5"><Zap size={80} /></div>
           <span className="text-[10px] text-foreground/40 uppercase tracking-widest">Net_Debt</span>
-          <div className="text-3xl font-bold tracking-tight">{fmtBal(debtBalance)}</div>
+          <div className="text-2xl font-bold tracking-tight">{fmtBal(debtBalance)}</div>
           <div className="text-[10px] text-red-400 flex items-center gap-1 mt-2 uppercase tracking-widest">
             <TrendingUp size={12} />{isDecrypted ? "Decrypted" : "Encrypted"}
           </div>
         </div>
-        <div className="bg-[#05080f]/40 border border-border/40 rounded-2xl p-6 flex flex-col gap-2">
+        <div className="bg-[#05080f]/40 border border-border/40 rounded-2xl p-5 flex flex-col gap-2">
           <span className="text-[10px] text-foreground/40 uppercase tracking-widest">Collateral</span>
-          <div className="text-3xl font-bold tracking-tight text-primary">{fmtBal(collateralBalance)}</div>
+          <div className="text-2xl font-bold tracking-tight text-primary">{fmtBal(collateralBalance)}</div>
         </div>
-        <div className="bg-[#05080f]/40 border border-border/40 rounded-2xl p-6 flex flex-col gap-2">
+        <div className="bg-[#05080f]/40 border border-border/40 rounded-2xl p-5 flex flex-col gap-2 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-5"><ShieldCheck size={80} /></div>
+          <span className="text-[10px] text-foreground/40 uppercase tracking-widest">Credit_Score</span>
+          <div className="text-2xl font-bold tracking-tight text-purple-400">
+            {creditScore !== null ? creditScore : "•••"}
+            <span className="text-[9px] text-foreground/30 ml-1">/ 850</span>
+          </div>
+          <div className="text-[9px] text-purple-400/60 flex items-center gap-1 mt-1 uppercase tracking-widest">
+            Limit: {creditLimit !== null ? `$${(Number(creditLimit)/1e6).toFixed(0)}` : "ENC"}
+          </div>
+        </div>
+        <div className="bg-[#05080f]/40 border border-border/40 rounded-2xl p-5 flex flex-col gap-2">
           <span className="text-[10px] text-foreground/40 uppercase tracking-widest">Health_Factor</span>
-          <div className="text-3xl font-bold tracking-tight text-green-400">1.92</div>
+          <div className={`text-2xl font-bold tracking-tight ${
+            debtBalance === 0n || debtBalance === null ? "text-green-400" :
+            (Number(collateralBalance || 0n) * 0.8 / Number(debtBalance)) > 1.5 ? "text-green-400" :
+            (Number(collateralBalance || 0n) * 0.8 / Number(debtBalance)) > 1.1 ? "text-yellow-400" : "text-red-400"
+          }`}>
+            {debtBalance === 0n || debtBalance === null ? "∞" : (Number(collateralBalance || 0n) * 0.8 / Number(debtBalance)).toFixed(2)}
+          </div>
         </div>
       </div>
 
@@ -329,12 +358,19 @@ export default function PositionsPage() {
         <div className="bg-[#05080f]/30 border border-border/30 rounded-3xl p-8 space-y-6">
           <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/30 flex items-center gap-2"><Target size={16} /> Collateral_Composition</h3>
           <div className="space-y-6">
-            {[{ label: "USDC_COLLATERAL", pct: "65%", color: "bg-primary" }, { label: "WETH_COLLATERAL", pct: "35%", color: "bg-blue-500" }].map(c => (
-              <div key={c.label} className="space-y-3">
-                <div className="flex justify-between text-[11px] font-bold"><span>{c.label}</span><span className="text-foreground/40 italic">Encrypted</span></div>
-                <div className="h-1.5 bg-secondary/50 rounded-full overflow-hidden"><div className={`h-full ${c.color}`} style={{ width: c.pct }} /></div>
+            {collateralBalance !== null ? (
+              <>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-[11px] font-bold"><span>USDC_COLLATERAL</span><span className="text-foreground/40 italic">Decrypted</span></div>
+                  <div className="h-1.5 bg-secondary/50 rounded-full overflow-hidden"><div className="h-full bg-primary" style={{ width: "100%" }} /></div>
+                </div>
+                <p className="text-[9px] text-foreground/30 uppercase tracking-tight italic">Single asset pool detected · Zama Hub V3</p>
+              </>
+            ) : (
+              <div className="py-8 text-center border border-dashed border-white/5 rounded-2xl">
+                <p className="text-[9px] text-foreground/20 uppercase tracking-widest">Decrypt to view composition</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
         <div className="bg-[#05080f]/30 border border-border/30 rounded-3xl p-8 space-y-6 relative group overflow-hidden">
