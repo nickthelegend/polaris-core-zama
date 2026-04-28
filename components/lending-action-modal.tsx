@@ -51,8 +51,8 @@ export function LendingActionModal({
   const [done, setDone] = useState(false)
   const [walletBalance, setWalletBalance] = useState<string | null>(null)
 
-  const { supply, borrow, depositCollateral, loading, encryptAmount } = useFhePrivateLending()
-  const { getTokenBalance, address: polarisAddress, chainId } = usePolaris()
+  const { supply, borrow, loading, encryptAmount } = useFhePrivateLending()
+  const { getTokenBalance, address: polarisAddress, chainId, getMasterConfig } = usePolaris()
   const { address } = useAccount()
 
   const isSupply = mode === "supply"
@@ -108,11 +108,8 @@ export function LendingActionModal({
       // Step 1 — encrypt
       addLog({ id: 1, step: "Encrypting input", detail: `${amount} ${pool.symbol} → euint64 ciphertext`, status: "pending" })
       
-      const addresses = networkId === NETWORKS.SEPOLIA.id 
-        ? CONTRACTS.SPOKES.SEPOLIA.PRIVATE_LENDING 
-        : CONTRACTS.PRIVATE_LENDING;
-        
-      const targetAddress = isSupply ? addresses.PRIVATE_LENDING_POOL : addresses.PRIVATE_BORROW_MANAGER;
+      const { config } = getMasterConfig();
+      const targetAddress = isSupply ? config.POOL_MANAGER : config.LOAN_ENGINE;
       const { handle, proof } = await encryptAmount(wei, targetAddress);
       
       updateLog(1, { 
@@ -121,16 +118,15 @@ export function LendingActionModal({
         encrypted: handle 
       })
 
-      // Step 2 — collateral (borrow only)
-      if (!isSupply) {
-        addLog({ id: 2, step: "Depositing collateral", detail: `depositCollateral(...) — 2× for health factor`, status: "pending" })
-        const collalHash = await depositCollateral(wei * BigInt(2))
-        updateLog(2, { status: "done", detail: `Collateral deposited: ${collalHash.slice(0, 10)}...` })
-      }
+      // Collateral is now derived from supplied liquidity in PoolManager
 
       const fn = isSupply ? "supply" : "borrow"
-      addLog({ id: 3, step: `Calling ${fn}()`, detail: "Broadcasting encrypted tx to PrivateLendingPool...", status: "pending" })
-      const hash = isSupply ? await supply(wei, pool.symbol) : await borrow(wei, pool.symbol)
+      addLog({ id: 3, step: `Calling ${fn}()`, detail: "Broadcasting encrypted tx to Hub...", status: "pending" })
+      
+      const { TOKENS } = await import("@/config/tokens")
+      const tokenAddr = TOKENS[pool.symbol]?.address || ""
+      
+      const hash = isSupply ? await supply(wei, tokenAddr) : await borrow(wei, tokenAddr)
       
       updateLog(3, { 
         status: "done", 

@@ -18,7 +18,7 @@ interface Loan { id: number; principal: string; interest: string; totalDebt: str
 
 export default function CreditPage() {
   const { isConnected, address } = useAccount()
-  const { authenticated, getUserTotalCollateral, getLoans, getCreditLimit, getExternalNetValue } = usePolaris()
+  const { authenticated, getUserTotalCollateralHandle, getLoans, getCreditLimitHandle, getExternalNetValue } = usePolaris()
   const [collateral, setCollateral] = useState("0")
   const [externalValue, setExternalValue] = useState("0")
   const [creditLine, setCreditLine] = useState(0)
@@ -37,11 +37,11 @@ export default function CreditPage() {
 
   const fetchAll = async () => {
     try {
-      const [col, ln, limit] = await Promise.all([getUserTotalCollateral(), getLoans(), getCreditLimit()])
-      setCollateral(col)
+      const [colHandle, ln, limitHandle] = await Promise.all([getUserTotalCollateralHandle(), getLoans(), getCreditLimitHandle()])
+      setCollateral("Encrypted"); setLoans(ln); setOnChainLimit("Encrypted")
       let extVal = "0"; try { extVal = await getExternalNetValue() } catch {}
       setExternalValue(extVal)
-      setCreditLine(parseFloat(limit)); setLoans(ln); setOnChainLimit(limit)
+      setCreditLine(0) // Will be updated after decryption
       if (address) {
         const [sp, rp] = await Promise.all([
           fetch(`/api/credit/split-plans?userAddress=${address}`).then(r=>r.json()).catch(()=>({plans:[]})),
@@ -109,19 +109,25 @@ export default function CreditPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 divide-x divide-white/5">
           <div className="p-5 flex flex-col gap-1 relative group">
             <span className="text-[10px] text-white/40 tracking-wider uppercase">Total_Collateral</span>
-            <span className="text-white text-2xl font-bold tracking-tighter">{(parseFloat(collateral)+parseFloat(externalValue)).toLocaleString(undefined,{maximumFractionDigits:2})}</span>
+            <span className="text-white text-2xl font-bold tracking-tighter">
+              {ps.decryptedLimit !== null ? `$${(ps.decryptedLimit + parseFloat(externalValue)).toLocaleString()}` : "••••••••"}
+            </span>
             <span className="text-[9px] text-white/20 uppercase tracking-tighter">Oracle: {parseFloat(externalValue).toLocaleString(undefined,{maximumFractionDigits:0})}</span>
             <ShieldCheck className="absolute bottom-2 right-2 w-8 h-8 text-primary/5 group-hover:text-primary/10 transition-colors" />
           </div>
           <div className="p-5 flex flex-col gap-1 relative group">
             <span className="text-[10px] text-white/40 tracking-wider uppercase">Available_Credit</span>
-            <span className="text-primary text-2xl font-bold tracking-tighter">{creditLine.toLocaleString(undefined,{maximumFractionDigits:2})}</span>
+            <span className="text-primary text-2xl font-bold tracking-tighter">
+              {ps.decryptedLimit !== null ? ps.decryptedLimit.toLocaleString() : "••••••••"}
+            </span>
             <span className="text-[9px] text-white/20 uppercase tracking-tighter">Borrowing power</span>
             <TrendingUp className="absolute bottom-2 right-2 w-8 h-8 text-primary/5 group-hover:text-primary/10 transition-colors" />
           </div>
           <div className="p-5 flex flex-col gap-1 relative group">
             <span className="text-[10px] text-white/40 tracking-wider uppercase">On-Chain_Limit</span>
-            <span className="text-blue-400 text-2xl font-bold tracking-tighter">{parseFloat(onChainLimit).toLocaleString(undefined,{maximumFractionDigits:2})}</span>
+            <span className="text-blue-400 text-2xl font-bold tracking-tighter">
+               {ps.decryptedLimit !== null ? ps.decryptedLimit.toLocaleString() : "••••••••"}
+            </span>
             <span className="text-[9px] text-white/20 uppercase tracking-tighter">ScoreManager limit</span>
             <Zap className="absolute bottom-2 right-2 w-8 h-8 text-blue-500/5 group-hover:text-blue-500/10 transition-colors" />
           </div>

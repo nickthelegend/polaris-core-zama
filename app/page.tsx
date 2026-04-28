@@ -83,7 +83,8 @@ function PrivateActionWidget() {
             const token = TOKENS[borrowAsset]
             const decimals = token?.decimals || 18
             const amount = parseUnits(borrowAmount, decimals)
-            await borrow(amount, borrowAsset)
+            const tokenAddr = (CONTRACTS.MASTER as any)[borrowAsset] || borrowAsset
+            await borrow(amount, tokenAddr)
             toast.success(`Confidential borrow of ${borrowAmount} ${borrowAsset} initiated`)
         } catch (err: any) {
             toast.error(err.message || "Borrow failed")
@@ -97,7 +98,9 @@ function PrivateActionWidget() {
             const token = TOKENS[lendAsset]
             const decimals = token?.decimals || 18
             const amount = parseUnits(lendAmount, decimals)
-            await supply(amount, lendAsset)
+            // Use the token address from CONTRACTS.MASTER or SPOKES
+            const tokenAddr = (CONTRACTS.MASTER as any)[lendAsset] || lendAsset
+            await supply(amount, tokenAddr)
             toast.success(`Confidential supply of ${lendAmount} ${lendAsset} initiated`)
         } catch (err: any) {
             toast.error(err.message || "Supply failed")
@@ -202,11 +205,10 @@ export default function Page() {
             const addresses = CONTRACTS.PRIVATE_LENDING;
             
             toast.info("Requesting secure decryption via EIP-712...")
-            await decryptAllPositions(
-              addresses.PRIVATE_LENDING_POOL,
-              addresses.PRIVATE_BORROW_MANAGER,
-              addresses.PRIVATE_COLLATERAL_VAULT
-            )
+            // Use the first borrow asset as the target for position lookup
+            const { TOKENS } = await import("@/config/tokens")
+            const tokenAddr = TOKENS[borrowAsset]?.address || ""
+            await decryptAllPositions(tokenAddr)
             setHasDecrypted(true)
             toast.success("Confidential positions revealed")
         } catch (err) {

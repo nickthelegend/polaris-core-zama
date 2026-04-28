@@ -141,8 +141,8 @@ export default function PoolsPage() {
                   <div className="text-sm font-bold text-red-400">{poolInfo.borrowApy}</div>
                 </div>
                 <div className="col-span-2 text-right">
-                  <div className="text-sm font-mono text-white/40 flex items-center justify-end gap-1.5 uppercase">
-                    <Lock size={12} className="text-primary/40" />Private
+                  <div className="text-sm font-mono text-white/80 flex items-center justify-end gap-1.5 uppercase">
+                    ${parseFloat(pool.liquidity).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </div>
                 </div>
                 <div className="col-span-2 flex justify-end items-center gap-2">

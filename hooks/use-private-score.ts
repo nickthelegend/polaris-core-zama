@@ -15,56 +15,39 @@ interface PrivateScoreState {
 }
 
 export function usePrivateScore() {
-  const { getContract, address, chainId } = usePolaris();
+  const { getContract, address, getMasterConfig } = usePolaris();
   const [state, setState] = useState<PrivateScoreState>({
     decryptedScore: null, decryptedLimit: null,
     isInitialized: null, loading: false, decrypting: false, error: null,
   });
 
   const getAddr = useCallback(() => {
-    return (CONTRACTS.PRIVATE_LENDING as any).PRIVATE_SCORE_MANAGER || "";
-  }, []);
-
-  const getNid = useCallback((): number => {
-    if (!chainId) return NETWORKS.SEPOLIA.id;
-    const p = chainId.includes(':') ? chainId.split(':')[1] : chainId;
-    return parseInt(p, 10) || NETWORKS.SEPOLIA.id;
-  }, [chainId]);
+    const { config } = getMasterConfig();
+    return config.SCORE_MANAGER;
+  }, [getMasterConfig]);
 
   const checkInitialized = useCallback(async (): Promise<boolean> => {
     if (!address) return false;
     try {
-      const c = await getContract(getAddr(), ABIS.PrivateScoreManager, getNid(), false);
-      const init = await c.hasScore(address);
+      const { id } = getMasterConfig();
+      const c = await getContract(getAddr(), ABIS.ScoreManager, id, false);
+      const scoreHandle = await c.getScore(address);
+      const init = scoreHandle && scoreHandle !== '0x' + '0'.repeat(64);
       setState(s => ({ ...s, isInitialized: init }));
       return init;
     } catch { return false; }
-  }, [address, getAddr, getNid, getContract]);
+  }, [address, getAddr, getMasterConfig, getContract]);
 
-  const initializeScore = useCallback(async () => {
-    if (!address) throw new Error('Wallet not connected');
-    setState(s => ({ ...s, loading: true, error: null }));
-    try {
-      const c = await getContract(getAddr(), ABIS.PrivateScoreManager, getNid());
-      const tx = await c.initializeScore(address);
-      await tx.wait();
-      setState(s => ({ ...s, loading: false, isInitialized: true }));
-    } catch (e: any) {
-      setState(s => ({ ...s, loading: false, error: e.message }));
-    }
-  }, [address, getAddr, getNid, getContract]);
-
-  /** Decrypt both score AND credit limit in one EIP-712 consent flow */
   const decryptAll = useCallback(async (): Promise<{ score: number | null; limit: number | null }> => {
     if (!address) return { score: null, limit: null };
     setState(s => ({ ...s, decrypting: true, error: null }));
     try {
       const contractAddr = getAddr();
-      const nid = getNid();
-      const contract = await getContract(contractAddr, ABIS.PrivateScoreManager, nid, false);
+      const { id } = getMasterConfig();
+      const contract = await getContract(contractAddr, ABIS.ScoreManager, id, false);
 
-      const scoreHandle = await contract.getEncryptedScore(address);
-      const limitHandle = await contract.getEncryptedLimit(address);
+      const scoreHandle = await contract.getScore(address);
+      const limitHandle = await contract.getCreditLimit(address);
 
       const handles: { handle: string; contractAddress: string }[] = [];
       const zero = '0x' + '0'.repeat(64);
@@ -90,7 +73,11 @@ export function usePrivateScore() {
 
       const results = await fhevm.userDecrypt(handles, privateKey, publicKey, signature, addrs, address, startTs, days);
 
-      const parse = (h: string) => { const v = results[h as `0x${string}`]; return v === undefined ? null : Number(BigInt(v)); };
+      const parse = (h: string) => { 
+        const v = results[h as `0x${string}`]; 
+        return v === undefined ? null : Number(BigInt(v)); 
+      };
+      
       const score = scoreHandle && scoreHandle !== zero ? parse(scoreHandle) : null;
       const limit = limitHandle && limitHandle !== zero ? parse(limitHandle) : null;
 
@@ -101,16 +88,12 @@ export function usePrivateScore() {
       setState(s => ({ ...s, decrypting: false, error: e.message }));
       return { score: null, limit: null };
     }
-  }, [address, getAddr, getNid, getContract]);
-
-  // Keep single decryptScore for backward compat
-  const decryptScore = decryptAll;
+  }, [address, getAddr, getMasterConfig, getContract]);
 
   return {
     ...state,
     checkInitialized,
-    initializeScore,
-    decryptScore,
+    decryptScore: decryptAll,
     decryptAll,
     contractAddress: getAddr(),
   };
